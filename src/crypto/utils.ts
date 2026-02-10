@@ -75,7 +75,7 @@ export async function hkdfDerive(
       hash: 'SHA-256',
       // Placeholder: zero salt — will use proper salt in WASM implementation
       salt: new Uint8Array(32),
-      // @ts-expect-error TS 5.7+ Uint8Array<ArrayBufferLike> vs BufferSource mismatch
+      // @ts-expect-error TS 5.7+ Uint8Array<ArrayBufferLike> vs BufferSource mismatch (microsoft/TypeScript#59451)
       info: encode(info),
     },
     key,
