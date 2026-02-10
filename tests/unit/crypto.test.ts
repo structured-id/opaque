@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encode, randomBytes, hash, concat, hkdfExpand } from '../../src/crypto/utils';
+import { encode, randomBytes, hash, concat, hkdfDerive } from '../../src/crypto/utils';
 
 describe('crypto/utils', () => {
   describe('encode', () => {
@@ -63,25 +63,25 @@ describe('crypto/utils', () => {
     });
   });
 
-  describe('hkdfExpand', () => {
+  describe('hkdfDerive', () => {
     it('derives key material of requested length', async () => {
       const prk = randomBytes(32);
-      const result = await hkdfExpand(prk, 'test-info', 32);
+      const result = await hkdfDerive(prk, 'test-info', 32);
       expect(result).toBeInstanceOf(Uint8Array);
       expect(result.length).toBe(32);
     });
 
     it('produces different output for different info strings', async () => {
       const prk = randomBytes(32);
-      const a = await hkdfExpand(prk, 'info-a', 32);
-      const b = await hkdfExpand(prk, 'info-b', 32);
+      const a = await hkdfDerive(prk, 'info-a', 32);
+      const b = await hkdfDerive(prk, 'info-b', 32);
       expect(a).not.toEqual(b);
     });
 
     it('is deterministic for same inputs', async () => {
       const prk = new Uint8Array(32).fill(42);
-      const a = await hkdfExpand(prk, 'same-info', 32);
-      const b = await hkdfExpand(prk, 'same-info', 32);
+      const a = await hkdfDerive(prk, 'same-info', 32);
+      const b = await hkdfDerive(prk, 'same-info', 32);
       expect(a).toEqual(b);
     });
   });

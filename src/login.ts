@@ -21,8 +21,9 @@ export interface LoginFinishResult {
  * Start OPAQUE login (client side).
  *
  * 1. Blind the password (same as registration start).
- * 2. Generate ephemeral key exchange material.
- * 3. Return credential request + client state.
+ * 2. Return credential request + client state for loginFinish.
+ *
+ * TODO: Add ephemeral key exchange material when AKE is implemented.
  */
 export async function loginStart(password: string, _serverId: string): Promise<LoginStartResult> {
   const { blindedElement, blind } = await oprfBlind(password);

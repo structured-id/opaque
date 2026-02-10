@@ -1,4 +1,4 @@
-import { hash, hkdfExpand } from './utils';
+import { hash, hkdfDerive } from './utils';
 
 export interface AkeResult {
   sessionKey: Uint8Array;
@@ -16,9 +16,9 @@ export async function deriveKeys(oprfOutput: Uint8Array, serverId: string): Prom
   const info = new TextEncoder().encode(`OPAQUE-AKE-${serverId}`);
   const prk = new Uint8Array(await hash(new Uint8Array([...oprfOutput, ...info])));
 
-  const sessionKey = await hkdfExpand(prk, 'session-key', 32);
-  const exportKey = await hkdfExpand(prk, 'export-key', 32);
-  const finalization = await hkdfExpand(prk, 'finalization', 32);
+  const sessionKey = await hkdfDerive(prk, 'session-key', 32);
+  const exportKey = await hkdfDerive(prk, 'export-key', 32);
+  const finalization = await hkdfDerive(prk, 'finalization', 32);
 
   return { sessionKey, exportKey, finalization };
 }

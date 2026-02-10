@@ -16,14 +16,18 @@ import { OpaqueClient } from '@structured-id/opaque';
 const client = new OpaqueClient({ serverId: 'auth.example.com' });
 
 // Registration
-const { request, state } = await client.registrationStart(password);
-// Send `request` to server, receive `serverResponse`
-const { record, exportKey } = await client.registrationFinish(password, serverResponse, state);
+const reg = await client.registrationStart(password);
+// Send `reg.request` to server, receive `serverResponse`
+const { record, exportKey } = await client.registrationFinish(password, serverResponse, reg.state);
 
 // Login
-const { request, state } = await client.loginStart(password);
-// Send `request` to server, receive `serverResponse`
-const { finalization, sessionKey, exportKey } = await client.loginFinish(password, serverResponse, state);
+const login = await client.loginStart(password);
+// Send `login.request` to server, receive `serverResponse`
+const { finalization, sessionKey, exportKey: loginExportKey } = await client.loginFinish(
+  password,
+  serverResponse,
+  login.state,
+);
 ```
 
 ## Status

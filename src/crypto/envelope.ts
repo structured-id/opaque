@@ -1,4 +1,4 @@
-import { hash, hkdfExpand } from './utils';
+import { hash, hkdfDerive } from './utils';
 
 export interface EnvelopeResult {
   envelope: Uint8Array;
@@ -18,8 +18,8 @@ export async function buildEnvelope(
   const info = new TextEncoder().encode(`OPAQUE-Envelope-${serverId}`);
   const prk = new Uint8Array(await hash(new Uint8Array([...oprfOutput, ...info])));
 
-  const envelopeKey = await hkdfExpand(prk, 'envelope-key', 32);
-  const exportKey = await hkdfExpand(prk, 'export-key', 32);
+  const envelopeKey = await hkdfDerive(prk, 'envelope-key', 32);
+  const exportKey = await hkdfDerive(prk, 'export-key', 32);
 
   // Placeholder: envelope is the derived key material (no encryption yet)
   const envelope = new Uint8Array([...envelopeKey]);

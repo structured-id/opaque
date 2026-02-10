@@ -30,17 +30,22 @@ export function concat(...arrays: Uint8Array[]): Uint8Array {
 /**
  * HKDF key derivation using WebCrypto.
  *
- * Derives key material from input keying material (IKM) with the given info string.
- * Uses WebCrypto's HKDF which performs extract+expand internally.
+ * Uses WebCrypto's HKDF which performs both extract and expand internally.
+ * The `ikm` parameter is input keying material (NOT a pre-extracted PRK).
+ * A zero-filled salt is used for the extract step — this is placeholder
+ * behavior and will be replaced with proper salt handling in the WASM
+ * implementation.
+ *
+ * Note: This is NOT equivalent to RFC 5869 HKDF-Expand alone.
  */
-export async function hkdfExpand(
-  prk: Uint8Array,
+export async function hkdfDerive(
+  ikm: Uint8Array,
   info: string,
   length: number,
 ): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     'raw',
-    prk as unknown as BufferSource,
+    ikm as unknown as BufferSource,
     { name: 'HKDF' },
     false,
     ['deriveBits'],
@@ -50,6 +55,7 @@ export async function hkdfExpand(
     {
       name: 'HKDF',
       hash: 'SHA-256',
+      // Placeholder: zero salt — will use proper salt in WASM implementation
       salt: new Uint8Array(32) as unknown as BufferSource,
       info: encode(info) as unknown as BufferSource,
     },
