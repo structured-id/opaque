@@ -1,4 +1,4 @@
-import { encode, hash } from './utils';
+import { concat, encode, hash } from './utils';
 
 export interface OprfBlindResult {
   blindedElement: Uint8Array;
@@ -16,7 +16,7 @@ export async function oprfBlind(password: string): Promise<OprfBlindResult> {
   const blind = crypto.getRandomValues(new Uint8Array(32));
 
   // Placeholder: hash(password || blind) as blinded element
-  const combined = new Uint8Array([...input, ...blind]);
+  const combined = concat(input, blind);
   const blindedElement = new Uint8Array(await hash(combined));
 
   return { blindedElement, blind };
@@ -33,6 +33,6 @@ export async function oprfFinalize(
   blind: Uint8Array,
 ): Promise<Uint8Array> {
   const input = encode(password);
-  const combined = new Uint8Array([...input, ...evaluatedElement, ...blind]);
+  const combined = concat(input, evaluatedElement, blind);
   return new Uint8Array(await hash(combined));
 }

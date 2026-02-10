@@ -36,7 +36,9 @@ const { finalization, sessionKey, exportKey: loginExportKey } = await client.log
 
 ## Status
 
-Early development. Crypto modules are placeholders using WebCrypto HKDF/SHA-256. Full OPAQUE implementation with ristretto255 and 3DH AKE will be added via WASM.
+> **NOT PRODUCTION READY** — uses placeholder, insecure cryptography. DO NOT USE for real user data. This is not a compliant OPAQUE (RFC 9807) implementation.
+
+Early development. Crypto modules are temporary placeholders using WebCrypto HKDF/SHA-256. A full OPAQUE implementation with ristretto255 and 3DH AKE will be added via WASM.
 
 ## License
 

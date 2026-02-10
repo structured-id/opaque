@@ -25,7 +25,11 @@ export interface LoginFinishResult {
  *
  * TODO: Add ephemeral key exchange material when AKE is implemented.
  */
-export async function loginStart(password: string, _serverId: string): Promise<LoginStartResult> {
+export async function loginStart(
+  password: string,
+  // Reserved for real OPAQUE: serverId will bind the request to server identity
+  _serverId: string,
+): Promise<LoginStartResult> {
   const { blindedElement, blind } = await oprfBlind(password);
 
   return {

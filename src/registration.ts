@@ -24,6 +24,7 @@ export interface RegistrationFinishResult {
  */
 export async function registrationStart(
   password: string,
+  // Reserved for real OPAQUE: serverId will bind the request to server identity
   _serverId: string,
 ): Promise<RegistrationStartResult> {
   const { blindedElement, blind } = await oprfBlind(password);

@@ -14,11 +14,11 @@ export interface AkeResult {
  */
 export async function deriveKeys(oprfOutput: Uint8Array, serverId: string): Promise<AkeResult> {
   const info = new TextEncoder().encode(`OPAQUE-AKE-${serverId}`);
-  const prk = new Uint8Array(await hash(new Uint8Array([...oprfOutput, ...info])));
+  const ikm = new Uint8Array(await hash(new Uint8Array([...oprfOutput, ...info])));
 
-  const sessionKey = await hkdfDerive(prk, 'session-key', 32);
-  const exportKey = await hkdfDerive(prk, 'export-key', 32);
-  const finalization = await hkdfDerive(prk, 'finalization', 32);
+  const sessionKey = await hkdfDerive(ikm, 'session-key', 32);
+  const exportKey = await hkdfDerive(ikm, 'export-key', 32);
+  const finalization = await hkdfDerive(ikm, 'finalization', 32);
 
   return { sessionKey, exportKey, finalization };
 }

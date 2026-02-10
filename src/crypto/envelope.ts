@@ -16,10 +16,10 @@ export async function buildEnvelope(
   serverId: string,
 ): Promise<EnvelopeResult> {
   const info = new TextEncoder().encode(`OPAQUE-Envelope-${serverId}`);
-  const prk = new Uint8Array(await hash(new Uint8Array([...oprfOutput, ...info])));
+  const ikm = new Uint8Array(await hash(new Uint8Array([...oprfOutput, ...info])));
 
-  const envelopeKey = await hkdfDerive(prk, 'envelope-key', 32);
-  const exportKey = await hkdfDerive(prk, 'export-key', 32);
+  const envelopeKey = await hkdfDerive(ikm, 'envelope-key', 32);
+  const exportKey = await hkdfDerive(ikm, 'export-key', 32);
 
   // Placeholder: envelope is the derived key material (no encryption yet)
   const envelope = new Uint8Array([...envelopeKey]);
