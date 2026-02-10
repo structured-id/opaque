@@ -1,6 +1,6 @@
 {
   "name": "@structured-id/opaque",
-  "version": "0.0.0-development",
+  "version": "1.0.0",
   "type": "module",
   "description": "OPAQUE (RFC 9807) client library with WebCrypto and WASM",
   "main": "dist/index.cjs",
