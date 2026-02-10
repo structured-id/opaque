@@ -10,6 +10,9 @@ export interface OprfBlindResult {
  *
  * TODO: Replace with proper ristretto255/Pallas OPRF when WASM is ready.
  * Current implementation is a placeholder using SHA-256 hash.
+ *
+ * @param password - User password to blind.
+ * @returns Blinded element to send to server and blind scalar to preserve.
  */
 export async function oprfBlind(password: string): Promise<OprfBlindResult> {
   const input = encode(password);
@@ -26,6 +29,11 @@ export async function oprfBlind(password: string): Promise<OprfBlindResult> {
  * Finalize OPRF by unblinding the server's response.
  *
  * TODO: Replace with proper OPRF finalization when WASM is ready.
+ *
+ * @param password - Original user password.
+ * @param evaluatedElement - Server's evaluated OPRF element.
+ * @param blind - Client blind scalar from oprfBlind.
+ * @returns OPRF output bytes (placeholder: SHA-256 of combined inputs).
  */
 export async function oprfFinalize(
   password: string,

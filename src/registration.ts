@@ -21,6 +21,10 @@ export interface RegistrationFinishResult {
  * 1. Sample a blind scalar r.
  * 2. Compute blindedElement = r * Hash-to-Group(password).
  * 3. Return { request: blindedElement, state: r }.
+ *
+ * @param password - User password to register.
+ * @param _serverId - Reserved for server identity binding in full implementation.
+ * @returns Blinded request and client blind for the finish step.
  */
 export async function registrationStart(
   password: string,
@@ -42,6 +46,12 @@ export async function registrationStart(
  * 2. Derive keys from the OPRF output.
  * 3. Build envelope containing encrypted credentials.
  * 4. Return registration record + export key.
+ *
+ * @param password - User password (used for OPRF finalization).
+ * @param serverResponse - Server's evaluated OPRF element.
+ * @param state - Client blind from registrationStart.
+ * @param serverId - Server identity for domain separation.
+ * @returns Registration record (placeholder: envelope bytes) and export key.
  */
 export async function registrationFinish(
   password: string,

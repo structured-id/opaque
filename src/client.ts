@@ -17,6 +17,10 @@ export interface OpaqueClientConfig {
 export class OpaqueClient {
   private readonly serverId: string;
 
+  /**
+   * Create a new OPAQUE client.
+   * @param config - Client configuration including server identity.
+   */
   constructor(config: OpaqueClientConfig) {
     this.serverId = config.serverId;
   }
@@ -24,6 +28,9 @@ export class OpaqueClient {
   /**
    * Start the registration process.
    * Generates a registration request to send to the server.
+   *
+   * @param password - User password to register.
+   * @returns Blinded request and client state for the finish step.
    */
   async registrationStart(password: string): Promise<RegistrationStartResult> {
     return registrationStart(password, this.serverId);
@@ -32,6 +39,11 @@ export class OpaqueClient {
   /**
    * Finish the registration process.
    * Processes the server's registration response and produces the final record.
+   *
+   * @param password - User password (used for OPRF finalization).
+   * @param serverResponse - Server's evaluated OPRF element.
+   * @param state - Client blind from registrationStart.
+   * @returns Registration record to store on server and export key.
    */
   async registrationFinish(
     password: string,
@@ -44,6 +56,9 @@ export class OpaqueClient {
   /**
    * Start the login process.
    * Generates a credential request to send to the server.
+   *
+   * @param password - User password to authenticate with.
+   * @returns Credential request and client state for the finish step.
    */
   async loginStart(password: string): Promise<LoginStartResult> {
     return loginStart(password, this.serverId);
@@ -52,6 +67,11 @@ export class OpaqueClient {
   /**
    * Finish the login process.
    * Processes the server's credential response and derives session keys.
+   *
+   * @param password - User password (used for OPRF finalization).
+   * @param serverResponse - Server's evaluated OPRF element.
+   * @param state - Client blind from loginStart.
+   * @returns Finalization message, session key, and export key.
    */
   async loginFinish(
     password: string,

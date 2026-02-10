@@ -24,6 +24,10 @@ export interface LoginFinishResult {
  * 2. Return credential request + client state for loginFinish.
  *
  * TODO: Add ephemeral key exchange material when AKE is implemented.
+ *
+ * @param password - User password to authenticate with.
+ * @param _serverId - Reserved for server identity binding in full implementation.
+ * @returns Blinded credential request and client state for the finish step.
  */
 export async function loginStart(
   password: string,
@@ -45,6 +49,12 @@ export async function loginStart(
  * 2. Recover credentials from the envelope.
  * 3. Perform authenticated key exchange.
  * 4. Derive session key.
+ *
+ * @param password - User password (used for OPRF finalization).
+ * @param serverResponse - Server's evaluated OPRF element.
+ * @param state - Client blind from loginStart.
+ * @param serverId - Server identity for domain separation.
+ * @returns Finalization message, session key, and export key.
  */
 export async function loginFinish(
   password: string,

@@ -24,6 +24,8 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      // Disable no-undef for TypeScript — TS compiler handles this with type checking
+      'no-undef': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
