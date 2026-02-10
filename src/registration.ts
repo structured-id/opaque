@@ -53,7 +53,7 @@ export async function registrationFinish(
   const { envelope, exportKey } = await buildEnvelope(oprfOutput, serverId);
 
   // Placeholder: record is the envelope (public key will be added in full implementation)
-  const record = new Uint8Array([...envelope]);
+  const record = envelope.slice();
 
   return {
     record,

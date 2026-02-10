@@ -12,7 +12,8 @@ export function randomBytes(length: number): Uint8Array {
 
 /** SHA-256 hash. */
 export async function hash(data: Uint8Array): Promise<ArrayBuffer> {
-  return crypto.subtle.digest('SHA-256', data as unknown as BufferSource);
+  // @ts-expect-error TS 5.7+ Uint8Array<ArrayBufferLike> vs BufferSource mismatch (microsoft/TypeScript#59451)
+  return crypto.subtle.digest('SHA-256', data);
 }
 
 /** Concatenate multiple Uint8Arrays. */
@@ -43,21 +44,17 @@ export async function hkdfDerive(
   info: string,
   length: number,
 ): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    ikm as unknown as BufferSource,
-    { name: 'HKDF' },
-    false,
-    ['deriveBits'],
-  );
+  // @ts-expect-error TS 5.7+ Uint8Array<ArrayBufferLike> vs BufferSource mismatch (microsoft/TypeScript#59451)
+  const key = await crypto.subtle.importKey('raw', ikm, { name: 'HKDF' }, false, ['deriveBits']);
 
   const derived = await crypto.subtle.deriveBits(
     {
       name: 'HKDF',
       hash: 'SHA-256',
       // Placeholder: zero salt — will use proper salt in WASM implementation
-      salt: new Uint8Array(32) as unknown as BufferSource,
-      info: encode(info) as unknown as BufferSource,
+      salt: new Uint8Array(32),
+      // @ts-expect-error TS 5.7+ Uint8Array<ArrayBufferLike> vs BufferSource mismatch
+      info: encode(info),
     },
     key,
     length * 8,

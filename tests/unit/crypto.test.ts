@@ -65,23 +65,23 @@ describe('crypto/utils', () => {
 
   describe('hkdfDerive', () => {
     it('derives key material of requested length', async () => {
-      const prk = randomBytes(32);
-      const result = await hkdfDerive(prk, 'test-info', 32);
+      const ikm = randomBytes(32);
+      const result = await hkdfDerive(ikm, 'test-info', 32);
       expect(result).toBeInstanceOf(Uint8Array);
       expect(result.length).toBe(32);
     });
 
     it('produces different output for different info strings', async () => {
-      const prk = randomBytes(32);
-      const a = await hkdfDerive(prk, 'info-a', 32);
-      const b = await hkdfDerive(prk, 'info-b', 32);
+      const ikm = randomBytes(32);
+      const a = await hkdfDerive(ikm, 'info-a', 32);
+      const b = await hkdfDerive(ikm, 'info-b', 32);
       expect(a).not.toEqual(b);
     });
 
     it('is deterministic for same inputs', async () => {
-      const prk = new Uint8Array(32).fill(42);
-      const a = await hkdfDerive(prk, 'same-info', 32);
-      const b = await hkdfDerive(prk, 'same-info', 32);
+      const ikm = new Uint8Array(32).fill(42);
+      const a = await hkdfDerive(ikm, 'same-info', 32);
+      const b = await hkdfDerive(ikm, 'same-info', 32);
       expect(a).toEqual(b);
     });
   });
