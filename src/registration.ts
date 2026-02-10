@@ -1,6 +1,5 @@
 import { oprfBlind, oprfFinalize } from './crypto/oprf';
 import { buildEnvelope } from './crypto/envelope';
-import { randomBytes } from './crypto/utils';
 
 export interface RegistrationStartResult {
   /** The blinded message to send to the server. */
@@ -52,7 +51,7 @@ export async function registrationFinish(
   const oprfOutput = await oprfFinalize(password, serverResponse, state);
   const { envelope, exportKey } = await buildEnvelope(oprfOutput, serverId);
 
-  // The record contains the envelope and the client's public key
+  // Placeholder: record is the envelope (public key will be added in full implementation)
   const record = new Uint8Array([...envelope]);
 
   return {

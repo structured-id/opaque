@@ -24,10 +24,7 @@ export interface LoginFinishResult {
  * 2. Generate ephemeral key exchange material.
  * 3. Return credential request + client state.
  */
-export async function loginStart(
-  password: string,
-  _serverId: string,
-): Promise<LoginStartResult> {
+export async function loginStart(password: string, _serverId: string): Promise<LoginStartResult> {
   const { blindedElement, blind } = await oprfBlind(password);
 
   return {

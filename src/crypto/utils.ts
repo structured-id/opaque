@@ -28,9 +28,10 @@ export function concat(...arrays: Uint8Array[]): Uint8Array {
 }
 
 /**
- * HKDF-Expand using WebCrypto.
+ * HKDF key derivation using WebCrypto.
  *
- * Derives key material from a pseudorandom key (PRK) with the given info string.
+ * Derives key material from input keying material (IKM) with the given info string.
+ * Uses WebCrypto's HKDF which performs extract+expand internally.
  */
 export async function hkdfExpand(
   prk: Uint8Array,

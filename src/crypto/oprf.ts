@@ -9,7 +9,7 @@ export interface OprfBlindResult {
  * Blind a password for OPRF evaluation.
  *
  * TODO: Replace with proper ristretto255/Pallas OPRF when WASM is ready.
- * Current implementation is a placeholder using HKDF.
+ * Current implementation is a placeholder using SHA-256 hash.
  */
 export async function oprfBlind(password: string): Promise<OprfBlindResult> {
   const input = encode(password);

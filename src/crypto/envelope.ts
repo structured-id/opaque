@@ -21,7 +21,7 @@ export async function buildEnvelope(
   const envelopeKey = await hkdfExpand(prk, 'envelope-key', 32);
   const exportKey = await hkdfExpand(prk, 'export-key', 32);
 
-  // Placeholder: envelope is just the encrypted key material
+  // Placeholder: envelope is the derived key material (no encryption yet)
   const envelope = new Uint8Array([...envelopeKey]);
 
   return { envelope, exportKey };
