@@ -2,31 +2,40 @@ name: Dependabot Auto-Merge
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
-  contents: write
   pull-requests: write
+  contents: read
 
 jobs:
   auto-merge:
-    name: Auto-merge minor/patch
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+
     steps:
-      - uses: actions/create-github-app-token@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Generate App Token
         id: app-token
+        if: steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.RELEASER_APP_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
 
-      - uses: dependabot/fetch-metadata@v2
-        id: metadata
-
-      - name: Auto-approve and merge
-        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+      - name: Approve and enable auto-merge for minor/patch updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: |
+          gh pr review --approve "$PR_NUMBER"
+          gh pr merge --auto --squash "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          gh pr review --approve "$PR_URL"
-          gh pr merge --auto --squash "$PR_URL"
+          PR_NUMBER: ${{ github.event.pull_request.number }}

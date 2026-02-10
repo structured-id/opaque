@@ -1448,6 +1448,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.55.0"
     "@typescript-eslint/parser": "npm:^8.55.0"
     "@vitest/coverage-v8": "npm:^2.0.0"
+    conventional-changelog-conventionalcommits: "npm:^9.1.0"
     eslint: "npm:^9.0.0"
     prettier: "npm:^3.0.0"
     semantic-release: "npm:^24.0.0"
