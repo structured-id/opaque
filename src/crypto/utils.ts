@@ -1,22 +1,39 @@
 const encoder = new TextEncoder();
 
-/** Encode a string to UTF-8 bytes. */
+/**
+ * Encode a string to UTF-8 bytes.
+ * @param input - The string to encode.
+ * @returns UTF-8 encoded bytes.
+ */
 export function encode(input: string): Uint8Array {
   return encoder.encode(input);
 }
 
-/** Generate cryptographically secure random bytes. */
+/**
+ * Generate cryptographically secure random bytes.
+ * @param length - Number of random bytes to generate.
+ * @returns Random bytes from `crypto.getRandomValues`.
+ */
 export function randomBytes(length: number): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(length));
 }
 
-/** SHA-256 hash. */
-export async function hash(data: Uint8Array): Promise<ArrayBuffer> {
+/**
+ * SHA-256 hash.
+ * @param data - Input bytes to hash.
+ * @returns 32-byte SHA-256 digest.
+ */
+export async function hash(data: Uint8Array): Promise<Uint8Array> {
   // @ts-expect-error TS 5.7+ Uint8Array<ArrayBufferLike> vs BufferSource mismatch (microsoft/TypeScript#59451)
-  return crypto.subtle.digest('SHA-256', data);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return new Uint8Array(digest);
 }
 
-/** Concatenate multiple Uint8Arrays. */
+/**
+ * Concatenate multiple Uint8Arrays.
+ * @param arrays - Arrays to concatenate.
+ * @returns Single Uint8Array containing all input bytes in order.
+ */
 export function concat(...arrays: Uint8Array[]): Uint8Array {
   const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
   const result = new Uint8Array(totalLength);
@@ -38,6 +55,11 @@ export function concat(...arrays: Uint8Array[]): Uint8Array {
  * implementation.
  *
  * Note: This is NOT equivalent to RFC 5869 HKDF-Expand alone.
+ *
+ * @param ikm - Input keying material (raw, not pre-extracted).
+ * @param info - Context string for domain separation.
+ * @param length - Desired output length in bytes.
+ * @returns Derived key material.
  */
 export async function hkdfDerive(
   ikm: Uint8Array,

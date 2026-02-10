@@ -38,13 +38,14 @@ describe('crypto/utils', () => {
     it('produces a 32-byte SHA-256 digest', async () => {
       const input = encode('test data');
       const result = await hash(input);
-      expect(new Uint8Array(result).length).toBe(32);
+      expect(result).toBeInstanceOf(Uint8Array);
+      expect(result.length).toBe(32);
     });
 
     it('is deterministic', async () => {
       const input = encode('same input');
-      const a = new Uint8Array(await hash(input));
-      const b = new Uint8Array(await hash(input));
+      const a = await hash(input);
+      const b = await hash(input);
       expect(a).toEqual(b);
     });
   });

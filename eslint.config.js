@@ -17,7 +17,6 @@ export default [
         console: 'readonly',
         process: 'readonly',
         TextEncoder: 'readonly',
-        BufferSource: 'readonly',
       },
     },
     plugins: {

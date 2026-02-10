@@ -17,7 +17,7 @@ export async function oprfBlind(password: string): Promise<OprfBlindResult> {
 
   // Placeholder: hash(password || blind) as blinded element
   const combined = concat(input, blind);
-  const blindedElement = new Uint8Array(await hash(combined));
+  const blindedElement = await hash(combined);
 
   return { blindedElement, blind };
 }
@@ -34,5 +34,5 @@ export async function oprfFinalize(
 ): Promise<Uint8Array> {
   const input = encode(password);
   const combined = concat(input, evaluatedElement, blind);
-  return new Uint8Array(await hash(combined));
+  return hash(combined);
 }
