@@ -1,0 +1,75 @@
+{
+  "name": "@structured-id/opaque",
+  "version": "0.0.0-development",
+  "type": "module",
+  "description": "OPAQUE (RFC 9807) client library with WebCrypto and WASM",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "opaque",
+    "pake",
+    "authentication",
+    "cryptography",
+    "webauthn",
+    "wasm"
+  ],
+  "author": "StructuredID <oss@structured.id>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/structured-id/opaque.git"
+  },
+  "bugs": {
+    "url": "https://github.com/structured-id/opaque/issues"
+  },
+  "homepage": "https://github.com/structured-id/opaque#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^20.4.1",
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/git": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "semantic-release": "^24.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "packageManager": "yarn@4.12.0",
+  "publishConfig": {
+    "access": "public"
+  }
+}
