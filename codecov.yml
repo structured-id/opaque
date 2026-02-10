@@ -1,0 +1,39 @@
+coverage:
+  precision: 2
+  round: down
+  range: 50..90
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: null
+        informational: true
+    patch:
+      default:
+        target: auto
+        threshold: null
+        informational: true
+  changes:
+    default:
+      threshold: null
+      informational: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: false
+  show_critical_paths: false
+
+github_checks:
+  annotations: false
+
+ignore:
+  - "tests/**/*"
+  - "**/*.test.ts"
+  - "dist/**/*"
+  - "coverage/**/*"
+  - "node_modules/**/*"
+  - "**/*.d.ts"

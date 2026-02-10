@@ -50,6 +50,12 @@ jobs:
           cache: yarn
       - run: yarn install --immutable
       - run: yarn test:cov
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
 
   code-quality:
     name: Code Quality
