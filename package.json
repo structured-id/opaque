@@ -1,0 +1,88 @@
+{
+  "name": "@structured-id/opaque",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "OPAQUE (RFC 9807) client library with cryptographic password policy validation.",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "bench": "vitest bench",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "server": "tsx tests/server/index.ts",
+    "docker:up": "docker compose -f docker-compose.local.yml up -d server",
+    "docker:test": "docker compose -f docker-compose.local.yml run --rm -e OPAQUE_SERVER_URL=http://server:8080 test",
+    "docker:down": "docker compose -f docker-compose.local.yml down",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "opaque",
+    "rfc9807",
+    "pake",
+    "password",
+    "password-policy",
+    "authentication",
+    "cryptography"
+  ],
+  "author": "StructuredID <oss@structured.id>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/structured-id/opaque.git"
+  },
+  "bugs": {
+    "url": "https://github.com/structured-id/opaque/issues"
+  },
+  "homepage": "https://github.com/structured-id/opaque#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^20.4.1",
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.5",
+    "@semantic-release/npm": "^13.1.4",
+    "@types/node": "^25.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
+    "eslint": "^10.0.0",
+    "prettier": "^3.8.1",
+    "semantic-release": "^25.0.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "packageManager": "yarn@4.12.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1"
+  }
+}

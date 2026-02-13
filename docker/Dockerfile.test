@@ -1,0 +1,33 @@
+# OPAQUE test runner
+# Runs vitest unit + integration tests inside Docker.
+#
+# Build:  docker build -f docker/Dockerfile.test -t opaque-test .
+# Run:    docker run opaque-test
+
+# ── Build stage ──
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+# Enable corepack for Yarn 4
+RUN corepack enable
+
+# Install dependencies first (cache layer)
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --immutable
+
+# Copy source + tests + config
+COPY tsconfig.json tsup.config.ts vitest.config.ts ./
+COPY src/ src/
+COPY tests/ tests/
+
+# Build library
+RUN yarn build
+
+# Typecheck
+RUN yarn typecheck
+
+# ── Test stage ──
+FROM build AS test
+
+CMD ["yarn", "test"]
