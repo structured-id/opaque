@@ -1,0 +1,48 @@
+# OPAQUE test server
+# Implements server-side OPAQUE protocol over HTTP for local client testing.
+#
+# Build:  docker build -f docker/Dockerfile.server -t opaque-server .
+# Run:    docker run -p 8080:8080 -e SUITE=P256_SHA256 opaque-server
+
+# ── Build stage ──
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+# Enable corepack for Yarn 4 (version from package.json packageManager)
+RUN corepack enable
+
+# Install dependencies first (cache layer)
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --immutable
+
+# Copy source
+COPY tsconfig.json tsup.config.ts ./
+COPY src/ src/
+COPY tests/server/ tests/server/
+
+# Build library (produces dist/)
+RUN yarn build
+
+# ── Runtime stage ──
+FROM node:22-alpine
+
+WORKDIR /app
+
+RUN corepack enable
+
+COPY --from=build /app/package.json /app/yarn.lock /app/.yarnrc.yml ./
+COPY --from=build /app/node_modules node_modules/
+COPY --from=build /app/src/ src/
+COPY --from=build /app/tests/server/ tests/server/
+COPY --from=build /app/tsconfig.json ./
+
+ENV PORT=8080
+ENV SUITE=P256_SHA256
+ENV SERVER_ID=sid.example.com
+EXPOSE 8080
+
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/health || exit 1
+
+CMD ["npx", "tsx", "tests/server/index.ts"]
