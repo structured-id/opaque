@@ -11,3 +11,6 @@ coverage/
 !.yarn/versions
 .env
 .env.*
+
+# Claude Code local config
+.claude
