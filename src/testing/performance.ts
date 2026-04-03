@@ -96,9 +96,9 @@ async function testPolicyValidation(): Promise<OperationTiming> {
     // Validate length
     void (pwd.length >= 8);
     // Check character classes
-    void (/[A-Z]/.test(pwd));
-    void (/[a-z]/.test(pwd));
-    /\d/.test(pwd);
+    void /[A-Z]/.test(pwd);
+    void /[a-z]/.test(pwd);
+    void /\d/.test(pwd);
   }
 
   const clientTime = performance.now() - clientStart;
