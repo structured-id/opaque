@@ -19,7 +19,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && cp wasm/*.wasm wasm/*.js wasm/*.d.ts dist/ 2>/dev/null || true",
+    "build:wasm": "cd ../sid && wasm-pack build crates/sid-wasm --target web --no-default-features && cp crates/sid-wasm/pkg/sid_wasm_bg.wasm crates/sid-wasm/pkg/sid_wasm.js crates/sid-wasm/pkg/sid_wasm.d.ts ../opaque/wasm/",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
