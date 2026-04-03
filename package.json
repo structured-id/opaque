@@ -1,6 +1,6 @@
 {
   "name": "@structured-id/opaque",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "OPAQUE (RFC 9807) client library with cryptographic password policy validation.",
   "main": "dist/index.cjs",
