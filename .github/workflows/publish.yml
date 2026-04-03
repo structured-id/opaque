@@ -23,6 +23,10 @@ jobs:
       - run: yarn install --immutable
       - run: yarn build
       - run: yarn test
+      # Auth: npm trusted publishing via OIDC (id-token: write + environment: release)
+      # Configure at npmjs.com → Package Settings → Publishing Access → Trusted Publishers:
+      #   Organization: structured-id, Repository: opaque
+      #   Workflow: publish.yml, Environment: release
       - name: Publish to npm
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -30,7 +34,4 @@ jobs:
             echo "Version ${VERSION} already published to npm; skipping."
             exit 0
           fi
-          yarn npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
+          npm publish --access public --provenance
