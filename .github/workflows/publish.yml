@@ -15,17 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: yarn
           registry-url: https://registry.npmjs.org
       - run: yarn install --immutable
       - run: yarn build
       - run: yarn test
-      # Auth: NPM_TOKEN (automation token from npmjs.com)
-      # Provenance: OIDC signing via id-token: write permission
-      # Setup: add NPM_TOKEN secret to the "release" environment
-      - run: npm publish --access public --provenance
+      - name: Publish to npm
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if npm view "@structured-id/opaque@${VERSION}" version >/dev/null 2>&1; then
+            echo "Version ${VERSION} already published to npm; skipping."
+            exit 0
+          fi
+          yarn npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
