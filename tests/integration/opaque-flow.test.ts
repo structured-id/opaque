@@ -153,7 +153,7 @@ function fullOpaqueFlow(suite: CipherSuite, password: string, serverId: string, 
 
   // Extract credential response from KE2
   const credRespFromKE2 = ke2.credentialResponse;
-  const evalMsg = credRespFromKE2.slice(0, suite.elementSize);
+  const _evalMsg = credRespFromKE2.slice(0, suite.elementSize);
   const mNonce = credRespFromKE2.slice(suite.elementSize, suite.elementSize + suite.nonceSize);
   const mResp = credRespFromKE2.slice(suite.elementSize + suite.nonceSize);
 

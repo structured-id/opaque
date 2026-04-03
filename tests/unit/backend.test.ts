@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { getBackend, setBackend, getBackendName } from '../../src/backend';
 import { jsBackend } from '../../src/backend/js';
 import { validatePasswordWasm, isWasmAvailable } from '../../src/backend/wasm';
