@@ -1,3 +1,14 @@
+# Changelog
+
+## [1.0.2](https://github.com/structured-id/opaque/compare/v1.0.1...v1.0.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* add type declarations for wasm-bindgen module (fixes CI typecheck) ([20c3135](https://github.com/structured-id/opaque/commit/20c3135250108f1659577ab7db2c977789b36697))
+* import wasm-bindgen from wasm/ (in git) not dist/ (build artifact) ([1929f28](https://github.com/structured-id/opaque/commit/1929f289275cb9252e81cc22d2f55669ed478f25))
+* resolve all lint errors (unused imports, any types, dead expressions) ([191447d](https://github.com/structured-id/opaque/commit/191447d2b2cdda2a9aeb4372c98c630676b1cb0c))
+
 ## 1.0.0 (2026-02-10)
 
 ### Features
