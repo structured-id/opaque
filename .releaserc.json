@@ -14,6 +14,7 @@
         { "type": "style", "release": false },
         { "type": "test", "release": false },
         { "type": "build", "release": false },
+        { "type": "chore", "scope": "wasm", "release": "patch" },
         { "type": "chore", "release": false }
       ]
     }],
