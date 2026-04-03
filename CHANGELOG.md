@@ -1,3 +1,15 @@
+# Changelog
+
+## 1.0.0 (2026-04-03)
+
+
+### Features
+
+* add WASM binary (sid-wasm) + wasm-bindgen integration ([b7da1a1](https://github.com/structured-id/opaque/commit/b7da1a1af75156bcca89fd15a0283ae53ac6b07e))
+* initialize OPAQUE RFC 9807 client library ([d8f6de0](https://github.com/structured-id/opaque/commit/d8f6de0ab48760cb2908d867d1c0837715aeff02))
+* switch to release-please + npm OIDC trusted publishing ([3539485](https://github.com/structured-id/opaque/commit/353948599ebd3bba8d5b7418d78ebcc2068c3133))
+* WASM policy enforcement + npm publish pipeline ([8dde113](https://github.com/structured-id/opaque/commit/8dde1131f7a90e104e088e6127ed5d6f89612468))
+
 ## 1.0.0 (2026-02-10)
 
 ### Features
