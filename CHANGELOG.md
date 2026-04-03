@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/structured-id/opaque/compare/v1.0.2...v1.0.3) (2026-04-03)
+
+
+### Bug Fixes
+
+* include wasm/ directory in npm package files ([a6ec698](https://github.com/structured-id/opaque/commit/a6ec698bc42f8154ad777833629eef8bc8f5d0f4))
+
 ## [1.0.2](https://github.com/structured-id/opaque/compare/v1.0.1...v1.0.2) (2026-04-03)
 
 
