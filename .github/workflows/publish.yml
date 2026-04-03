@@ -19,7 +19,8 @@ jobs:
         with:
           node-version: 24
           cache: yarn
-          registry-url: https://registry.npmjs.org
+          # NO registry-url — it creates .npmrc with NODE_AUTH_TOKEN which
+          # overrides OIDC trusted publishing with an invalid GITHUB_TOKEN
       - run: yarn install --immutable
       - run: yarn build
       - run: yarn test
