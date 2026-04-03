@@ -23,11 +23,9 @@ jobs:
       - run: yarn install --immutable
       - run: yarn build
       - run: yarn test
-      # npm trusted publishing via OIDC — no NPM_TOKEN needed.
-      # Configure trusted publisher at npmjs.com:
-      #   Package: @structured-id/opaque
-      #   Organization: structured-id
-      #   Repository: opaque
-      #   Workflow: publish.yml
-      #   Environment: release
+      # Auth: NPM_TOKEN (automation token from npmjs.com)
+      # Provenance: OIDC signing via id-token: write permission
+      # Setup: add NPM_TOKEN secret to the "release" environment
       - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
