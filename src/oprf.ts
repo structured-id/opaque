@@ -8,9 +8,7 @@
  */
 import { ristretto255_oprf } from '@noble/curves/ed25519.js';
 import { p256_oprf, p384_oprf, p521_oprf } from '@noble/curves/nist.js';
-import { sha256 } from '@noble/hashes/sha2.js';
 import { CurveId } from './suites.js';
-import { getGroup } from './group/index.js';
 
 /** OPRF blind result: blind scalar + blinded element to send to server. */
 export interface OprfBlindResult {
