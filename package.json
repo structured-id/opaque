@@ -15,6 +15,7 @@
   },
   "files": [
     "dist",
+    "wasm",
     "README.md",
     "LICENSE"
   ],
