@@ -98,7 +98,7 @@ async function testPolicyValidation(): Promise<OperationTiming> {
     // Check character classes
     void /[A-Z]/.test(pwd);
     void /[a-z]/.test(pwd);
-    /\d/.test(pwd);
+    void /\d/.test(pwd);
   }
 
   const clientTime = performance.now() - clientStart;
