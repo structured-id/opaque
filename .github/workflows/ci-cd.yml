@@ -73,6 +73,7 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           GIT_AUTHOR_NAME: structured-id-releaser[bot]
           GIT_AUTHOR_EMAIL: structured-id-releaser[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: structured-id-releaser[bot]
