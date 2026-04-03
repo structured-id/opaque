@@ -1,0 +1,33 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          registry-url: https://registry.npmjs.org
+      - run: yarn install --immutable
+      - run: yarn build
+      - run: yarn test
+      # npm trusted publishing via OIDC — no NPM_TOKEN needed.
+      # Configure trusted publisher at npmjs.com:
+      #   Package: @structured-id/opaque
+      #   Organization: structured-id
+      #   Repository: opaque
+      #   Workflow: publish.yml
+      #   Environment: release
+      - run: npm publish --access public --provenance
