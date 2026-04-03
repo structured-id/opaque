@@ -30,9 +30,14 @@ jobs:
       #   Workflow: publish.yml, Environment: release
       - name: Publish to npm
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if npm view "@structured-id/opaque@${VERSION}" version >/dev/null 2>&1; then
-            echo "Version ${VERSION} already published to npm; skipping."
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${PACKAGE_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "Release tag version (${TAG_VERSION}) does not match package.json version (${PACKAGE_VERSION})."
+            exit 1
+          fi
+          if npm view "@structured-id/opaque@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "Version ${PACKAGE_VERSION} already published to npm; skipping."
             exit 0
           fi
           npm publish --access public --provenance
