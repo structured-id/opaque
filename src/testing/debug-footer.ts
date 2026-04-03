@@ -169,7 +169,7 @@ function createFooterElement(): void {
   document.body.appendChild(footerElement);
 
   // Bind runTests method
-  (footerElement as any).runTests = runPerformanceTests;
+  (footerElement as unknown as Record<string, unknown>).runTests = runPerformanceTests;
 }
 
 /**

@@ -48,7 +48,7 @@ export const TEST_SUITES: CipherSuiteInfo[] = [
  */
 export async function runPerformanceTests(serverUrl: string = '/test'): Promise<TestResult> {
   const operations: OperationTiming[] = [];
-  const startTime = performance.now();
+  const _startTime = performance.now();
 
   try {
     // Test 1: Policy validation (client-side)
@@ -94,10 +94,10 @@ async function testPolicyValidation(): Promise<OperationTiming> {
   const passwords = ['Test@123456', 'Valid.Pass99', 'Complex!Pwd000'];
   for (const pwd of passwords) {
     // Validate length
-    pwd.length >= 8;
+    void (pwd.length >= 8);
     // Check character classes
-    /[A-Z]/.test(pwd);
-    /[a-z]/.test(pwd);
+    void (/[A-Z]/.test(pwd));
+    void (/[a-z]/.test(pwd));
     /\d/.test(pwd);
   }
 
