@@ -68,7 +68,8 @@ export async function initWasm(): Promise<OpaqueBackend> {
       // Import wasm-bindgen generated glue module.
       // The glue module handles WASM loading via `default()` init function.
       // dist/sid_wasm.js + dist/sid_wasm_bg.wasm must be present.
-      const wasm = await import('../../dist/sid_wasm.js');
+      // wasm/ directory is in git with pre-built wasm-bindgen artifacts
+      const wasm = await import('../../wasm/sid_wasm.js');
 
       // Initialize WASM module (loads .wasm binary relative to glue JS)
       await wasm.default();
@@ -90,8 +91,7 @@ export async function initWasm(): Promise<OpaqueBackend> {
         '[opaque] ⚠️  WASM backend unavailable:',
         error instanceof Error ? error.message : String(error),
       );
-      initError =
-        error instanceof Error ? error : new Error(String(error));
+      initError = error instanceof Error ? error : new Error(String(error));
       throw initError;
     }
   })();
@@ -121,13 +121,7 @@ export async function validatePasswordWasm(
   try {
     await initWasm();
   } catch {
-    return validatePasswordJS(
-      password,
-      minLength,
-      requireUpper,
-      requireLower,
-      requireDigit,
-    );
+    return validatePasswordJS(password, minLength, requireUpper, requireLower, requireDigit);
   }
 
   if (wasmGlue) {
@@ -145,27 +139,12 @@ export async function validatePasswordWasm(
       const result = JSON.parse(resultJson);
       return result.errors || [];
     } catch (error) {
-      console.warn(
-        '[opaque] WASM validation failed, falling back to JS:',
-        error,
-      );
-      return validatePasswordJS(
-        password,
-        minLength,
-        requireUpper,
-        requireLower,
-        requireDigit,
-      );
+      console.warn('[opaque] WASM validation failed, falling back to JS:', error);
+      return validatePasswordJS(password, minLength, requireUpper, requireLower, requireDigit);
     }
   }
 
-  return validatePasswordJS(
-    password,
-    minLength,
-    requireUpper,
-    requireLower,
-    requireDigit,
-  );
+  return validatePasswordJS(password, minLength, requireUpper, requireLower, requireDigit);
 }
 
 /**
@@ -221,10 +200,7 @@ export const wasmBackend: OpaqueBackend = {
     );
   },
 
-  async loginStart(
-    _password: string,
-    _suite: CipherSuiteId,
-  ): Promise<LoginStartResult> {
+  async loginStart(_password: string, _suite: CipherSuiteId): Promise<LoginStartResult> {
     throw new Error(
       'WASM OPAQUE protocol not yet available — use JS backend for OPAQUE, WASM for policy/breach',
     );
