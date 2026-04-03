@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/structured-id/opaque/compare/v1.0.3...v1.0.4) (2026-04-03)
+
+
+### Bug Fixes
+
+* resolve DTS build failure and prettier formatting ([#34](https://github.com/structured-id/opaque/issues/34)) ([4de0dfa](https://github.com/structured-id/opaque/commit/4de0dfa9bac435a0325eb7fc88eb446236d42d14))
+
 ## [1.0.3](https://github.com/structured-id/opaque/compare/v1.0.2...v1.0.3) (2026-04-03)
 
 
