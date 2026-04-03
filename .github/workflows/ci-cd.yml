@@ -1,15 +1,13 @@
-name: CI/CD
+name: CI
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 jobs:
   quality-checks:
@@ -17,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # corepack must be enabled BEFORE setup-node so cache:yarn can find the lockfile
       - run: corepack enable
       - uses: actions/setup-node@v4
         with:
@@ -34,48 +31,3 @@ jobs:
           files: ./coverage/lcov.info
           fail_ci_if_error: false
       - run: yarn build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  semantic-release:
-    name: Release
-    needs: quality-checks
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.RELEASER_APP_ID }}
-          private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
-
-      # corepack must be enabled BEFORE setup-node so cache:yarn can find the lockfile
-      - run: corepack enable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: yarn
-
-      - run: yarn install --immutable
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GIT_AUTHOR_NAME: structured-id-releaser[bot]
-          GIT_AUTHOR_EMAIL: structured-id-releaser[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: structured-id-releaser[bot]
-          GIT_COMMITTER_EMAIL: structured-id-releaser[bot]@users.noreply.github.com
-        run: npx semantic-release
