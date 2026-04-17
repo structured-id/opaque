@@ -151,7 +151,6 @@ export function verify_breach_response(password, hibp_response) {
         wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
     }
 }
-
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,

@@ -47,10 +47,10 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly prepare_breach_check: (a: number, b: number) => [number, number];
     readonly verify_breach_response: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly generate_zkpp_proof: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
     readonly get_policy: (a: number) => [number, number, number, number];
     readonly validate_password: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly init_panic_hook: () => void;
+    readonly generate_zkpp_proof: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
