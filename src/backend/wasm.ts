@@ -24,6 +24,7 @@ import type {
   LoginFinishResult,
   Identifiers,
 } from '../types.js';
+import { validatePasswordClientSide } from '../policy.js';
 
 /** Lazy-loaded WASM module (wasm-bindgen glue) */
 let wasmGlue: {
@@ -148,7 +149,9 @@ export async function validatePasswordWasm(
 }
 
 /**
- * Client-side password validation (JavaScript fallback)
+ * Client-side password validation (JS fallback). Routes through the Rust-parity
+ * policy module so the no-WASM path returns byte-identical results to the WASM
+ * path (same byte-length semantics, 5 character classes, identical messages).
  */
 function validatePasswordJS(
   password: string,
@@ -157,63 +160,63 @@ function validatePasswordJS(
   requireLower: boolean,
   requireDigit: boolean,
 ): string[] {
-  const errors: string[] = [];
-  if (password.length < minLength) {
-    errors.push(`Minimum ${minLength} characters required`);
-  }
-  if (requireUpper && !/[A-Z]/.test(password)) {
-    errors.push('Uppercase letter required');
-  }
-  if (requireLower && !/[a-z]/.test(password)) {
-    errors.push('Lowercase letter required');
-  }
-  if (requireDigit && !/\d/.test(password)) {
-    errors.push('Digit required');
-  }
-  return errors;
+  return validatePasswordClientSide(password, {
+    minLength,
+    minUpper: requireUpper ? 1 : 0,
+    minLower: requireLower ? 1 : 0,
+    minDigit: requireDigit ? 1 : 0,
+    minSymbol: 0,
+  });
 }
 
-/** WASM backend implementation */
+/**
+ * Lazily-loaded pure-TS OPAQUE backend. The compiled WASM provides only
+ * policy / breach / ZKPP today; the OPAQUE protocol itself runs in TS
+ * (@noble/curves). Cached after first load so the dynamic import is paid once.
+ */
+let _jsBackend: OpaqueBackend | null = null;
+async function opaqueJs(): Promise<OpaqueBackend> {
+  if (!_jsBackend) {
+    _jsBackend = (await import('./js.js')).jsBackend;
+  }
+  return _jsBackend;
+}
+
+/**
+ * WASM backend: policy / breach / ZKPP run in WASM (fast); the OPAQUE protocol
+ * delegates to the pure-TS backend until OPAQUE-in-WASM ships. The wire format is
+ * backend-agnostic, so this hybrid is transparent to the server. On a browser
+ * without WASM, `initWasm()` throws and the selector picks the TS backend wholesale.
+ */
 export const wasmBackend: OpaqueBackend = {
   name: 'wasm',
 
   async registrationStart(
-    _password: string,
-    _suite: CipherSuiteId,
+    password: string,
+    suite: CipherSuiteId,
   ): Promise<RegistrationStartResult> {
-    // OPAQUE protocol operations still use JS backend (@noble/curves).
-    // WASM provides: policy validation, breach check, ZKPP proof generation.
-    // Full OPAQUE-in-WASM requires opaque-ke compiled to wasm32 (future).
-    throw new Error(
-      'WASM OPAQUE protocol not yet available — use JS backend for OPAQUE, WASM for policy/breach',
-    );
+    return (await opaqueJs()).registrationStart(password, suite);
   },
 
   async registrationFinish(
-    _password: string,
-    _response: Uint8Array,
-    _state: OpaqueState,
-    _identifiers: Identifiers,
+    password: string,
+    response: Uint8Array,
+    state: OpaqueState,
+    identifiers: Identifiers,
   ): Promise<RegistrationFinishResult> {
-    throw new Error(
-      'WASM OPAQUE protocol not yet available — use JS backend for OPAQUE, WASM for policy/breach',
-    );
+    return (await opaqueJs()).registrationFinish(password, response, state, identifiers);
   },
 
-  async loginStart(_password: string, _suite: CipherSuiteId): Promise<LoginStartResult> {
-    throw new Error(
-      'WASM OPAQUE protocol not yet available — use JS backend for OPAQUE, WASM for policy/breach',
-    );
+  async loginStart(password: string, suite: CipherSuiteId): Promise<LoginStartResult> {
+    return (await opaqueJs()).loginStart(password, suite);
   },
 
   async loginFinish(
-    _password: string,
-    _ke2: Uint8Array,
-    _state: OpaqueState,
-    _identifiers: Identifiers,
+    password: string,
+    ke2: Uint8Array,
+    state: OpaqueState,
+    identifiers: Identifiers,
   ): Promise<LoginFinishResult> {
-    throw new Error(
-      'WASM OPAQUE protocol not yet available — use JS backend for OPAQUE, WASM for policy/breach',
-    );
+    return (await opaqueJs()).loginFinish(password, ke2, state, identifiers);
   },
 };
