@@ -114,19 +114,19 @@ describe('WASM Password Validation', () => {
   it('rejects password missing uppercase', async () => {
     const errors = await validatePasswordWasm('password123', 8, true);
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some((e) => e.includes('Uppercase'))).toBe(true);
+    expect(errors.some((e) => e.includes('uppercase letters'))).toBe(true);
   });
 
   it('rejects password missing lowercase', async () => {
     const errors = await validatePasswordWasm('PASSWORD123', 8, true, true);
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some((e) => e.includes('Lowercase'))).toBe(true);
+    expect(errors.some((e) => e.includes('lowercase letters'))).toBe(true);
   });
 
   it('rejects password missing digit', async () => {
     const errors = await validatePasswordWasm('PasswordAbc', 8, true, true, true);
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some((e) => e.includes('Digit'))).toBe(true);
+    expect(errors.some((e) => e.includes('digits'))).toBe(true);
   });
 
   it('allows custom minimum length requirement', async () => {

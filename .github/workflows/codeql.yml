@@ -17,7 +17,7 @@ jobs:
     name: Analyze
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # corepack MUST be enabled before setup-node so Yarn 4 lockfile is discoverable
       - run: corepack enable
