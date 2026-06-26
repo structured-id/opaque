@@ -24,6 +24,7 @@ import type {
   LoginFinishResult,
   Identifiers,
 } from '../types.js';
+import { validatePasswordClientSide } from '../policy.js';
 
 /** Lazy-loaded WASM module (wasm-bindgen glue) */
 let wasmGlue: {
@@ -148,7 +149,9 @@ export async function validatePasswordWasm(
 }
 
 /**
- * Client-side password validation (JavaScript fallback)
+ * Client-side password validation (JS fallback). Routes through the Rust-parity
+ * policy module so the no-WASM path returns byte-identical results to the WASM
+ * path (same byte-length semantics, 5 character classes, identical messages).
  */
 function validatePasswordJS(
   password: string,
@@ -157,20 +160,13 @@ function validatePasswordJS(
   requireLower: boolean,
   requireDigit: boolean,
 ): string[] {
-  const errors: string[] = [];
-  if (password.length < minLength) {
-    errors.push(`Minimum ${minLength} characters required`);
-  }
-  if (requireUpper && !/[A-Z]/.test(password)) {
-    errors.push('Uppercase letter required');
-  }
-  if (requireLower && !/[a-z]/.test(password)) {
-    errors.push('Lowercase letter required');
-  }
-  if (requireDigit && !/\d/.test(password)) {
-    errors.push('Digit required');
-  }
-  return errors;
+  return validatePasswordClientSide(password, {
+    minLength,
+    minUpper: requireUpper ? 1 : 0,
+    minLower: requireLower ? 1 : 0,
+    minDigit: requireDigit ? 1 : 0,
+    minSymbol: 0,
+  });
 }
 
 /**

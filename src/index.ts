@@ -31,6 +31,15 @@ export type { CipherSuite, HashId } from './suites.js';
 export { getBackend, setBackend, getBackendName } from './backend/index.js';
 export type { OpaqueBackend } from './backend/types.js';
 
+// ── Password policy (pure-TS, byte-for-byte parity with Rust sid_crypto::policy) ──
+export {
+  validatePasswordClientSide,
+  getPolicy,
+  CE_DEFAULT_POLICY,
+  CE_POLICY_VERSION,
+} from './policy.js';
+export type { PolicyParams } from './policy.js';
+
 // ── Group operations ──
 export { getGroup } from './group/index.js';
 export type { GroupOps, GroupElement } from './group/types.js';
