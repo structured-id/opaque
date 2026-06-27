@@ -15,6 +15,7 @@ import {
   commitHPieces,
   evalPolynomial,
   buildIPA,
+  buildMultiopen,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
@@ -377,5 +378,90 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     }
     expect(fe(c)).toBe(hex(tail.subarray(416, 448)));
     expect(fe(f)).toBe(hex(tail.subarray(448, 480)));
+  });
+
+  it('step 9b: multiopen (q_prime, q_evals, p_poly) matches halo2 → full proof', () => {
+    const f32 = (h: string) =>
+      Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const f16c = (h: string) =>
+      Array.from({ length: 16 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const X = leHex('8f9a7d0585b6ac4219645b208fa168aa5352e3a2bed204fb0c3a2c005fd5130e');
+    const Y = leHex('aa5e2e0c3f992b8a7b60a98a0f6697d624cdb1e5ad9cc89433bdbb8bfd15b41b');
+    const x1 = leHex(ipa.x1);
+    const x2 = leHex(ipa.x2);
+    const x3 = leHex(ipa.x3);
+    const x4 = leHex(ipa.x4);
+    const tail = bytes(ipa.proof_tail);
+
+    const SIGMA = perm.sigma.map(f16);
+    const rng = new CounterRng();
+    const { advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], rng);
+    const instance0 = new Array<bigint>(16).fill(0n);
+    instance0[0] = 15n;
+    const cols = [advice[0]!, advice[1]!, instance0];
+    const zPolys: bigint[][] = [];
+    let lastZ = 1n;
+    for (let j = 0; j < 3; j++) {
+      const z = permutationZ(cols[j], SIGMA[j], BETA, GAMMA, Fp.pow(DELTA, BigInt(j)), 4, lastZ);
+      zPolys.push(z);
+      lastZ = z[10];
+    }
+    const { blindedZ } = commitPermutationZ(PARAMS, zPolys, rng);
+    const { randomPoly } = commitVanishingRandom(G_COEFF, W, 16, rng);
+    const toCoset = (lag: bigint[]) => coeffToExtended(lagrangeToCoeff(lag, 4), 5);
+    const folded = buildFoldedH(
+      {
+        adv0: toCoset(advice[0]!),
+        adv1: toCoset(advice[1]!),
+        inst: toCoset(instance0),
+        sel: f32(toyH.fixed_coset_0),
+        z: blindedZ.map(toCoset),
+        sigma: SIGMA.map(toCoset),
+        l0: f32(toyH.l0),
+        lLast: f32(toyH.l_last),
+        lBlind: f32(toyH.l_blind),
+      },
+      BETA,
+      GAMMA,
+      Y,
+      4,
+      5,
+      5,
+    );
+    const hPoly = extendedToCoeff(divideByVanishing(folded, vanishingTInv(4, 5)), 4, 5, 2);
+
+    // Coefficient polynomials opened by the multiopen.
+    const inst0c = lagrangeToCoeff(instance0, 4);
+    const adv0c = lagrangeToCoeff(advice[0]!, 4);
+    const adv1c = lagrangeToCoeff(advice[1]!, 4);
+    const selc = extendedToCoeff(f32(toyH.fixed_coset_0), 4, 5, 2).slice(0, 16);
+    const sigc = SIGMA.map((s) => lagrangeToCoeff(s, 4));
+    const zc = blindedZ.map((z) => lagrangeToCoeff(z, 4));
+    const xn = Fp.pow(X, 16n);
+    const hComb = hPoly.slice(0, 16).map((v, i) => Fp.add(v, Fp.mul(hPoly[16 + i], xn)));
+
+    const omega = omegaForSize(4);
+    const Xw = Fp.mul(X, omega);
+    const Xlast = Fp.mul(X, Fp.pow(omega, 10n));
+
+    // Three point sets in first-occurrence order (npointsets=3).
+    const sets = [
+      { polys: [inst0c, adv1c, selc, sigc[0], sigc[1], sigc[2], hComb, randomPoly], points: [X] },
+      { polys: [adv0c, zc[2]], points: [X, Xw] },
+      { polys: [zc[0], zc[1]], points: [X, Xw, Xlast] },
+    ];
+    const { qPrime, qEvals, pPoly } = buildMultiopen(sets, x1, x2, x3, x4, 16);
+
+    // p(X) feeding the IPA must equal halo2's p_poly (ties multiopen → IPA).
+    expect(pPoly.map(fe)).toEqual(f16c(ipa.ppoly).map(fe));
+    // q evals = proof[832..928] (3 scalars).
+    for (let i = 0; i < 3; i++)
+      expect(fe(qEvals[i])).toBe(hex(tail.subarray(32 + i * 32, 32 + i * 32 + 32)));
+    // q_prime commitment = proof[800..832]; blind = RNG draw 51.
+    const rng2 = new CounterRng();
+    for (let i = 0; i < 51; i++) rng2.nextScalar();
+    const qpBlind = rng2.nextScalar();
+    const qpCommit = Vesta.add(Vesta.msm(qPrime, G_COEFF), Vesta.scalarMul(qpBlind, W));
+    expect(hex(Vesta.toBytes(qpCommit))).toBe(hex(tail.subarray(0, 32)));
   });
 });

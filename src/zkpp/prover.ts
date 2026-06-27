@@ -339,3 +339,56 @@ export function buildIPA(
   }
   return { sCommit, lr, c: p[0], f };
 }
+
+/** Divide a(X) by (X - point), dropping the remainder (halo2 kate_division). */
+export function kateDivision(a: bigint[], point: bigint): bigint[] {
+  const b = Fp.sub(0n, point);
+  const lenQ = a.length - 1;
+  const q = new Array<bigint>(lenQ).fill(0n);
+  let tmp = 0n;
+  for (let k = 0; k < lenQ; k++) {
+    const lead = Fp.sub(a[a.length - 1 - k], tmp);
+    q[lenQ - 1 - k] = lead;
+    tmp = Fp.mul(lead, b);
+  }
+  return q;
+}
+
+export interface MultiopenSet {
+  /** Polynomials (coeff) opened at this point set, in accumulation order. */
+  polys: bigint[][];
+  /** The point set (rotations) these polynomials are opened at. */
+  points: bigint[];
+}
+
+/**
+ * Multiopen (halo2 poly/multiopen/prover.rs): collapse each point set's polys with
+ * x1, divide by (X-point) per point and fold with x2 → q_prime; q evals at x3; the
+ * final p(X) = fold(q_prime, q_polys; x4) is the IPA opening input.
+ */
+export function buildMultiopen(
+  sets: MultiopenSet[],
+  x1: bigint,
+  x2: bigint,
+  x3: bigint,
+  x4: bigint,
+  n: number,
+): { qPrime: bigint[]; qEvals: bigint[]; pPoly: bigint[]; qPolys: bigint[][] } {
+  const qPolys = sets.map((s) =>
+    s.polys.reduce<bigint[] | null>(
+      (q, p) => (q === null ? p.slice() : q.map((v, i) => Fp.add(Fp.mul(v, x1), p[i]))),
+      null,
+    )!,
+  );
+  let qPrime: bigint[] | null = null;
+  sets.forEach((s, si) => {
+    let poly = qPolys[si].slice();
+    for (const point of s.points) poly = kateDivision(poly, point);
+    while (poly.length < n) poly.push(0n);
+    qPrime = qPrime === null ? poly : qPrime.map((v, i) => Fp.add(Fp.mul(v, x2), poly[i]));
+  });
+  const qEvals = qPolys.map((q) => evalPolynomial(q, x3));
+  let pPoly = qPrime!.slice();
+  for (const q of qPolys) pPoly = pPoly.map((v, i) => Fp.add(Fp.mul(v, x4), q[i]));
+  return { qPrime: qPrime!, qEvals, pPoly, qPolys };
+}
