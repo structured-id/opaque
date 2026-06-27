@@ -2,11 +2,17 @@
 // a·b=c (3·5=15), k=4, deterministic counter RNG. Vectors from toy_proof.rs.
 import { describe, it, expect } from 'vitest';
 import { Vesta } from '../src/zkpp/curve.js';
+import { Transcript } from '../src/zkpp/transcript.js';
 import { CounterRng, commitAdvice, type ProvingParams } from '../src/zkpp/prover.js';
 
 const bytes = (h: string) => new Uint8Array(h.match(/../g)!.map((x) => parseInt(x, 16)));
 const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 const pt = (h: string) => Vesta.fromBytes(bytes(h)) as { x: bigint; y: bigint };
+const leHex = (h: string): bigint => {
+  let v = 0n;
+  for (let i = h.length - 2; i >= 0; i -= 2) v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
+  return v;
+};
 
 const G_LAGRANGE = [
   'e436eff1671007968da74b6be6ccb48e913341be55133cd2d721f6091d0fff98',
@@ -41,5 +47,23 @@ describe('TS halo2 prover — advice commit (create_proof step 1)', () => {
     const { commitments } = commitAdvice(params, [[3n, 15n], [5n]], new CounterRng());
     expect(hex(Vesta.toBytes(commitments[0]))).toBe(hex(PROOF_PREFIX.subarray(0, 32)));
     expect(hex(Vesta.toBytes(commitments[1]))).toBe(hex(PROOF_PREFIX.subarray(32, 64)));
+  });
+
+  it('transcript (vk_repr → instance → advice) → theta matches halo2', () => {
+    // hash_into absorbs vk transcript_repr; instance commitments absorbed; advice
+    // commitments absorbed; squeeze theta.  Vectors from toy_proof.rs (HALO2_DUMP).
+    const VK_REPR = leHex('5a0e7ae13630d950ce60bc0337411b08fcb39821dd87a8dab457d68f1f28f801');
+    const INSTANCE_COMMIT = pt('4b2ec5a46047f25d719f122db4b8500023ede2278411fd95f9648f57c3af3999');
+    const THETA = leHex('32b40811b2b9b6419f2445399625f2166b379611590ef97f277b56f766c76c22');
+
+    const params: ProvingParams = { gLagrange: G_LAGRANGE, w: W, n: 16, blindingFactors: 5 };
+    const { commitments } = commitAdvice(params, [[3n, 15n], [5n]], new CounterRng());
+
+    const t = new Transcript();
+    t.commonScalar(VK_REPR);
+    t.commonPoint(INSTANCE_COMMIT);
+    t.commonPoint(commitments[0]!);
+    t.commonPoint(commitments[1]!);
+    expect(t.squeezeChallenge()).toBe(THETA);
   });
 });
