@@ -12,10 +12,17 @@ import {
   commitPermutationZ,
   commitVanishingRandom,
   buildFoldedH,
+  commitHPieces,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
-import { coeffToExtended, lagrangeToCoeff } from '../src/zkpp/domain.js';
+import {
+  coeffToExtended,
+  lagrangeToCoeff,
+  extendedToCoeff,
+  divideByVanishing,
+  vanishingTInv,
+} from '../src/zkpp/domain.js';
 import perm from './fixtures/toy-perm.json';
 import toyH from './fixtures/toy-h.json';
 
@@ -214,5 +221,69 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
       5,
     );
     expect(H.map(fe)).toEqual(f32(toyH.h_folded).map(fe));
+  });
+
+  it('step 6c-7: h-pieces commit (proof[192..256]) + x challenge match halo2', () => {
+    const f32 = (h: string) => Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const Y = leHex('aa5e2e0c3f992b8a7b60a98a0f6697d624cdb1e5ad9cc89433bdbb8bfd15b41b');
+    const X_EXP = leHex('8f9a7d0585b6ac4219645b208fa168aa5352e3a2bed204fb0c3a2c005fd5130e');
+    const H_COMMITS = [
+      'f92f44fafe9d25a9b56214e4169cf35af04fce6b2a23c951459ad352931939a9',
+      '1bfc6a4422b30d01aabb604949d1348b186b5fd65262f9add1389a2639ad2c30',
+    ];
+    const SIGMA = perm.sigma.map(f16);
+    const rng = new CounterRng();
+    const { commitments: adviceCommits, advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], rng);
+    const instance0 = new Array<bigint>(16).fill(0n);
+    instance0[0] = 15n;
+    const cols = [advice[0]!, advice[1]!, instance0];
+    const zPolys: bigint[][] = [];
+    let lastZ = 1n;
+    for (let j = 0; j < 3; j++) {
+      const z = permutationZ(cols[j], SIGMA[j], BETA, GAMMA, Fp.pow(DELTA, BigInt(j)), 4, lastZ);
+      zPolys.push(z);
+      lastZ = z[10];
+    }
+    const { commitments: zCommits, blindedZ } = commitPermutationZ(PARAMS, zPolys, rng);
+    const vanishingCommit = commitVanishingRandom(G_COEFF, W, 16, rng);
+    // Quotient h(X): folded constraints / t(X), back to coefficients.
+    const toCoset = (lag: bigint[]) => coeffToExtended(lagrangeToCoeff(lag, 4), 5);
+    const folded = buildFoldedH(
+      {
+        adv0: toCoset(advice[0]!),
+        adv1: toCoset(advice[1]!),
+        inst: toCoset(instance0),
+        sel: f32(toyH.fixed_coset_0),
+        z: blindedZ.map(toCoset),
+        sigma: SIGMA.map(toCoset),
+        l0: f32(toyH.l0),
+        lLast: f32(toyH.l_last),
+        lBlind: f32(toyH.l_blind),
+      },
+      BETA,
+      GAMMA,
+      Y,
+      4,
+      5,
+      5,
+    );
+    const hPoly = extendedToCoeff(divideByVanishing(folded, vanishingTInv(4, 5)), 4, 5, 2);
+    const hCommits = commitHPieces(G_COEFF, W, hPoly, 16, rng);
+    hCommits.forEach((c, i) => expect(hex(Vesta.toBytes(c))).toBe(H_COMMITS[i]));
+
+    // Transcript through y, absorb h commitments, squeeze x.
+    const t = new Transcript();
+    t.commonScalar(VK_REPR);
+    t.commonPoint(INSTANCE_COMMIT);
+    t.commonPoint(adviceCommits[0]!);
+    t.commonPoint(adviceCommits[1]!);
+    t.squeezeChallenge();
+    t.squeezeChallenge();
+    t.squeezeChallenge();
+    for (const c of zCommits) t.commonPoint(c);
+    t.commonPoint(vanishingCommit);
+    t.squeezeChallenge(); // y
+    for (const c of hCommits) t.commonPoint(c);
+    expect(t.squeezeChallenge()).toBe(X_EXP);
   });
 });

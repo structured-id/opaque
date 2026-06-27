@@ -154,6 +154,26 @@ export function commitVanishingRandom(
 }
 
 /**
+ * Commit the quotient h(X) split into n-sized pieces (coefficient basis), each
+ * with an RNG blind. RNG: one blind per piece, continuing the same CounterRng.
+ */
+export function commitHPieces(
+  gCoeff: { x: bigint; y: bigint }[],
+  w: { x: bigint; y: bigint },
+  hPoly: bigint[],
+  n: number,
+  rng: CounterRng,
+): Point[] {
+  const out: Point[] = [];
+  for (let off = 0; off < hPoly.length; off += n) {
+    const piece = hPoly.slice(off, off + n);
+    const blind = rng.nextScalar();
+    out.push(Vesta.add(Vesta.msm(piece, gCoeff), Vesta.scalarMul(blind, w)));
+  }
+  return out;
+}
+
+/**
  * Vanishing-argument folded constraint polynomial H on the extended coset
  * (halo2 distribute_powers(expressions, y) then evaluate), for the toy circuit
  * a·b=c with a 3-set permutation. Expression order matches halo2:
