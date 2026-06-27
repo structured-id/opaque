@@ -32,3 +32,12 @@ describe('ECC variable-base mul — complete-addition tail', () => {
     expect(got).toEqual(eccc.rows.map((r: string[]) => r.join(':')));
   });
 });
+
+import { decomposeForScalarMul } from '../src/zkpp/circuit/ecc-chip.js';
+import eccd from './fixtures/ecc-decompose.json';
+
+describe('ECC variable-base mul — scalar decomposition', () => {
+  it('k = scalar + t_q big-endian bits match halo2_gadgets', () => {
+    expect(decomposeForScalarMul(7n).join('')).toBe(eccd.bits);
+  });
+});

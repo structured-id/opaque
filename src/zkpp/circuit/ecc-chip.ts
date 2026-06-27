@@ -83,3 +83,15 @@ export function completeAddition(
   }
   return { rows, acc, z };
 }
+
+/** t_q where the Pallas scalar field F_q = 2²⁵⁴ + t_q. */
+export const T_Q = 45560315531506369815346746415080538113n;
+
+/**
+ * Scalar decomposition for variable-base mul (halo2_gadgets decompose_for_scalar_mul):
+ * k = scalar + t_q (unreduced), returned as 255 big-endian (MSB-first) bits.
+ */
+export function decomposeForScalarMul(scalar: bigint): number[] {
+  const k = scalar + T_Q;
+  return Array.from({ length: 255 }, (_, i) => Number((k >> BigInt(254 - i)) & 1n));
+}
