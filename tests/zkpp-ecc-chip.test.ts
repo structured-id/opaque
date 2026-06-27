@@ -41,3 +41,18 @@ describe('ECC variable-base mul — scalar decomposition', () => {
     expect(decomposeForScalarMul(7n).join('')).toBe(eccd.bits);
   });
 });
+
+import { variableBaseMul } from '../src/zkpp/circuit/ecc-chip.js';
+import { Pallas as Pallas2 } from '../src/zkpp/curve.js';
+
+describe('ECC full variable-base mul — end-to-end', () => {
+  it('variableBaseMul(7, H_p) == [7]·H_p (M) — full chip algorithm', () => {
+    const base = { x: le(gc.hpx), y: le(gc.hpy) };
+    const result = variableBaseMul(7n, base) as { x: bigint; y: bigint };
+    expect(fe(result.x)).toBe(gc.mx);
+    expect(fe(result.y)).toBe(gc.my);
+    // Cross-check against the independent @noble scalar mul.
+    const ref = Pallas2.scalarMul(7n, base) as { x: bigint; y: bigint };
+    expect(fe(result.x)).toBe(fe(ref.x));
+  });
+});

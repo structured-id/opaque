@@ -95,3 +95,19 @@ export function decomposeForScalarMul(scalar: bigint): number[] {
   const k = scalar + T_Q;
   return Array.from({ length: 255 }, (_, i) => Number((k >> BigInt(254 - i)) & 1n));
 }
+
+/**
+ * Full variable-base scalar mul (halo2_gadgets mul.rs assign): decompose k = scalar
+ * + t_q, init acc = [2]·base, hi incomplete (125) → lo incomplete (126) → complete
+ * (3) → process_lsb (result = acc + (k_0 ? 0 : −base)). Returns [scalar]·base.
+ */
+export function variableBaseMul(scalar: bigint, base: Point): Point {
+  const b = base as { x: bigint; y: bigint };
+  const bits = decomposeForScalarMul(scalar);
+  const init = Pallas.double(base) as { x: bigint; y: bigint }; // [2]·base
+  const hi = incompleteDoubleAndAdd(b.x, b.y, init.x, init.y, bits.slice(0, 125), 0n);
+  const lo = incompleteDoubleAndAdd(b.x, b.y, hi.xa, hi.ya, bits.slice(125, 251), hi.z);
+  const comp = completeAddition(base, lo.xa, lo.ya, bits.slice(251, 254), lo.z);
+  const lsb = bits[254];
+  return lsb ? comp.acc : Pallas.add(comp.acc, Pallas.neg(base));
+}
