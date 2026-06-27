@@ -55,6 +55,9 @@ describe('TS halo2 prover — advice commit (create_proof step 1)', () => {
     const VK_REPR = leHex('5a0e7ae13630d950ce60bc0337411b08fcb39821dd87a8dab457d68f1f28f801');
     const INSTANCE_COMMIT = pt('4b2ec5a46047f25d719f122db4b8500023ede2278411fd95f9648f57c3af3999');
     const THETA = leHex('32b40811b2b9b6419f2445399625f2166b379611590ef97f277b56f766c76c22');
+    // toy has no lookups: beta, gamma squeezed consecutively after theta.
+    const BETA = leHex('3c0dd97732ec84447cff2b9ec23ea48c316db2a15d38405a700b5648bdcd2721');
+    const GAMMA = leHex('6d25090216970a9a3d0ce0be54189db46e6bdd27428b5327e4fd564015a7d206');
 
     const params: ProvingParams = { gLagrange: G_LAGRANGE, w: W, n: 16, blindingFactors: 5 };
     const { commitments } = commitAdvice(params, [[3n, 15n], [5n]], new CounterRng());
@@ -65,5 +68,7 @@ describe('TS halo2 prover — advice commit (create_proof step 1)', () => {
     t.commonPoint(commitments[0]!);
     t.commonPoint(commitments[1]!);
     expect(t.squeezeChallenge()).toBe(THETA);
+    expect(t.squeezeChallenge()).toBe(BETA);
+    expect(t.squeezeChallenge()).toBe(GAMMA);
   });
 });
