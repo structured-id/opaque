@@ -110,3 +110,40 @@ export function permutationZ(
   for (let i = 1; i < n; i++) z.push(Fp.mul(z[i - 1], modified[i - 1]));
   return z;
 }
+
+/**
+ * Commit each permutation grand-product polynomial: overwrite the last
+ * `blindingFactors` rows (z[n-bf, n)) with RNG randomness, draw a commitment
+ * blind, and commit in Lagrange basis. RNG order (per chunk): bf blinding rows
+ * then the blind — matching halo2 permutation::prover. Must continue the same
+ * CounterRng used for commitAdvice.
+ */
+export function commitPermutationZ(
+  params: ProvingParams,
+  zPolys: bigint[][],
+  rng: CounterRng,
+): Point[] {
+  const { n, blindingFactors, gLagrange, w } = params;
+  return zPolys.map((z) => {
+    const zc = z.slice();
+    for (let r = n - blindingFactors; r < n; r++) zc[r] = rng.nextScalar();
+    const blind = rng.nextScalar();
+    return Vesta.add(Vesta.msm(zc, gLagrange), Vesta.scalarMul(blind, w));
+  });
+}
+
+/**
+ * Vanishing argument's random blinding commitment: a degree n-1 polynomial of RNG
+ * coefficients committed in the COEFFICIENT basis (params.commit, gCoeff) plus a
+ * random blind. Absorbed before the y challenge. RNG: n coeffs then the blind.
+ */
+export function commitVanishingRandom(
+  gCoeff: { x: bigint; y: bigint }[],
+  w: { x: bigint; y: bigint },
+  n: number,
+  rng: CounterRng,
+): Point {
+  const coeffs = Array.from({ length: n }, () => rng.nextScalar());
+  const blind = rng.nextScalar();
+  return Vesta.add(Vesta.msm(coeffs, gCoeff), Vesta.scalarMul(blind, w));
+}

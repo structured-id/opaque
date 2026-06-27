@@ -9,6 +9,8 @@ import {
   CounterRng,
   commitAdvice,
   permutationZ,
+  commitPermutationZ,
+  commitVanishingRandom,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
@@ -47,6 +49,26 @@ const G_LAGRANGE = [
 ].map(pt);
 const W = pt('7520d96f3e5cd41760367151608b54821883c10c4b9a4ff2beae227bef94bcab');
 const PARAMS: ProvingParams = { gLagrange: G_LAGRANGE, w: W, n: 16, blindingFactors: 5 };
+// Coefficient-basis generators g (params.commit), for the vanishing random poly.
+const G_COEFF = [
+  '45065ed079bf389758f591131095ef419310e8c708a805852b9b77bed8c7ecbd',
+  'e0c0802686d3ed571f7f3399526b24460b16ace461ebda9dcfe6e5b7b298c18c',
+  'd27962962ce9ed2b87ae4c95462914917a9da0295f593956c1a76adca2ebc394',
+  'a74f2af0a526eb437ebb22c416a78fda0a275a2f2756115e51248f7c5a7acdac',
+  'a3c70c4c2497a714ebe96b6192bf940a13a277a6a7c4152a3524988d86be181b',
+  'c887e3240ff4de618fb8531a447b4f469f50a8ac35fe905da8b8e8732e527eb8',
+  'b7e796477bd8c4fe4b9ef9806c39cb32ed5558ef9d8c582909779eec700e259a',
+  '6787540156e67c55fba03e961d98971ccd6bf71c4edd0d80d4d7aec06f9cdb0a',
+  '4733b6af89cb374ccb4cdad193a4d959d0fe97c0c383444cf66fae33bbdb63b5',
+  '2793749458a1dbf7b53c91164a9d7b57f21a5075fbe003a1eb7cf8b11ff2a930',
+  '1b8d3628dd3aec8824c4757698ba0509287354eee15ca61f03d9ae4664c71f0d',
+  'f6d9eeaff51693a61b5d220c9e9f33e26f02fc8a21b0e803a64308d461146920',
+  '7c978cde92645552a7b574636f6a9f7d8527f48e82fabafa16ce317414d9e39e',
+  '100546a64730cbdd3ff9f8651f2a0f81b59d04cf0b688f019411901310700e92',
+  '842bad45abe1afcefb67eb246b6e51555802335969203562922c95ef99e4fbba',
+  'a370615e5b383d342f401237f6c2b72573bf10fafbd4f41c48857e4aef63cb81',
+].map(pt);
+const VANISHING_COMMIT = '8de5471258730a150a77f3595d32b1b00acabc76b9b13c3c1d7c1516208ad0a6';
 
 // First 64 bytes of TOY_PROOF = the two advice-column commitments.
 const PROOF_PREFIX = bytes(
@@ -78,19 +100,65 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     expect(t.squeezeChallenge()).toBe(GAMMA);
   });
 
-  it('step 4: permutation grand-product Z (3 chunks) matches halo2', () => {
+  it('step 4: permutation Z grand-product + commitments match halo2', () => {
     const SIGMA = perm.sigma.map(f16);
     const Z_EXPECTED = perm.z.map(f16);
-    const { advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], new CounterRng());
+    // Z commitments = proof[64..160] (3 points).
+    const Z_COMMITS = [
+      '8c0da2d2f6e89fcce83b667fa43fb3c673b7d889a2b39f3e2ab89011cd1926bd',
+      '383deb440586effabce4b7a2ac1b8a26eee38d127349f5a59cbbe61aa2e7f2b6',
+      '612ba22fda3af65a46ab199cbeada5f6332ec22c08b11d7971e957981f452513',
+    ];
+
+    const rng = new CounterRng();
+    const { advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], rng); // draws 14
     const instance0 = new Array<bigint>(16).fill(0n);
     instance0[0] = 15n;
     const cols = [advice[0]!, advice[1]!, instance0];
 
+    const zPolys: bigint[][] = [];
     let lastZ = 1n;
     for (let j = 0; j < 3; j++) {
       const z = permutationZ(cols[j], SIGMA[j], BETA, GAMMA, Fp.pow(DELTA, BigInt(j)), 4, lastZ);
       expect(z.map(fe)).toEqual(Z_EXPECTED[j].map(fe));
+      zPolys.push(z);
       lastZ = z[16 - (5 + 1)]; // z[n-(bf+1)]
     }
+    // Commit each Z (blinding rows + blind continue the same RNG).
+    const commits = commitPermutationZ(PARAMS, zPolys, rng);
+    commits.forEach((c, i) => expect(hex(Vesta.toBytes(c))).toBe(Z_COMMITS[i]));
+  });
+
+  it('step 5: y challenge (absorb Z commitments) matches halo2', () => {
+    const Y = leHex('aa5e2e0c3f992b8a7b60a98a0f6697d624cdb1e5ad9cc89433bdbb8bfd15b41b');
+    const SIGMA = perm.sigma.map(f16);
+    const rng = new CounterRng();
+    const { commitments: adviceCommits, advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], rng);
+    const instance0 = new Array<bigint>(16).fill(0n);
+    instance0[0] = 15n;
+    const cols = [advice[0]!, advice[1]!, instance0];
+    const zPolys: bigint[][] = [];
+    let lastZ = 1n;
+    for (let j = 0; j < 3; j++) {
+      const z = permutationZ(cols[j], SIGMA[j], BETA, GAMMA, Fp.pow(DELTA, BigInt(j)), 4, lastZ);
+      zPolys.push(z);
+      lastZ = z[10];
+    }
+    const zCommits = commitPermutationZ(PARAMS, zPolys, rng);
+    // Vanishing random blinding commitment (coeff basis) — absorbed before y.
+    const vanishingCommit = commitVanishingRandom(G_COEFF, W, 16, rng);
+    expect(hex(Vesta.toBytes(vanishingCommit))).toBe(VANISHING_COMMIT);
+
+    const t = new Transcript();
+    t.commonScalar(VK_REPR);
+    t.commonPoint(INSTANCE_COMMIT);
+    t.commonPoint(adviceCommits[0]!);
+    t.commonPoint(adviceCommits[1]!);
+    t.squeezeChallenge(); // theta
+    t.squeezeChallenge(); // beta
+    t.squeezeChallenge(); // gamma
+    for (const c of zCommits) t.commonPoint(c);
+    t.commonPoint(vanishingCommit);
+    expect(t.squeezeChallenge()).toBe(Y); // vanishing challenge
   });
 });
