@@ -14,10 +14,12 @@ import {
   buildFoldedH,
   commitHPieces,
   evalPolynomial,
+  buildIPA,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
 import { omegaForSize } from '../src/zkpp/fft.js';
+import ipa from './fixtures/toy-ipa.json';
 import {
   coeffToExtended,
   lagrangeToCoeff,
@@ -226,7 +228,8 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
   });
 
   it('step 6c-7: h-pieces commit (proof[192..256]) + x challenge match halo2', () => {
-    const f32 = (h: string) => Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const f32 = (h: string) =>
+      Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
     const Y = leHex('aa5e2e0c3f992b8a7b60a98a0f6697d624cdb1e5ad9cc89433bdbb8bfd15b41b');
     const X_EXP = leHex('8f9a7d0585b6ac4219645b208fa168aa5352e3a2bed204fb0c3a2c005fd5130e');
     const H_COMMITS = [
@@ -290,12 +293,15 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
   });
 
   it('step 8: evaluations at x (proof[256..800]) match halo2', () => {
-    const f32 = (h: string) => Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const f32 = (h: string) =>
+      Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
     const X = leHex('8f9a7d0585b6ac4219645b208fa168aa5352e3a2bed204fb0c3a2c005fd5130e');
     // proof[256..800] = 17 evaluation scalars.
     const EVALS =
       '50452872347baf0d17f9293a6fdf60ecba8a8396865dec96bc56bcb0be2c9b100179b165f923177088752c1ab8cd00509fdf05d1b328cd1faa4d294ed6ae990cab84131ff6f23467f57b1bd89313412b78f72e90dd83cafaf7fee7e657ce3b28e48b225f4e50350276d368bb51a34d66725a820e4e0ca50d9b0f2bcd47c64922288de04be8bb12ca98b7093cf4d7e7ff834d9192a26cbab42e6cea2d848b3d23d896e7c6a57116c1ea68a6bd19b359f523cf2888773de8d60eb2fc019824a91eaa94002a1d9a36f228634d7d531280c8960f6c97cabd4990033be0c8ced4863890b369343bcfac70b4288f64b220d46e0b9590e220fb88d62d8c436f6387ae14289fcb232b27a24fdadf96b2cff688437a8e94bd4fdf0f94accbe32eeef5ed286dfda276b9bb6edabbf31d820a1d95f5e05701fc9ee92cfcb05e6dc311d6d43e4d2502cf26c250ccb89f8f16d3abd35873091804a86ee4bb24a0c3c7343ffd1daefb366682b350a04b906ee73407edbd97c55c57039d811d552874c76a25d916de5199c9cbb68cf608c61c328b85a48d4511d077d3908e63b804843b3c80951a1375e9a73a06a87efc87c2727885135bb630c3dd7729c8b2bb8eec1fb0bfc82ac8447b70bd78689312e159bbefbd0cd51058fa1b379f8c186e2f5c651005a02b85e3dc87c6a983d2888f9411fb151f87b4d78a7cb4a959f488bc311c4d28131fd4322a2614d88a48dad0b19333f38b42447793c407910ee5526e4c6a6f8ff037';
-    const expected = Array.from({ length: 17 }, (_, i) => leHex(EVALS.slice(i * 64, i * 64 + 64))).map(fe);
+    const expected = Array.from({ length: 17 }, (_, i) =>
+      leHex(EVALS.slice(i * 64, i * 64 + 64)),
+    ).map(fe);
 
     const SIGMA = perm.sigma.map(f16);
     const rng = new CounterRng();
@@ -335,5 +341,41 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
       if (s < 2) evals.push(evalPolynomial(zc[s], xLast));
     }
     expect(evals.map(fe)).toEqual(expected);
+  });
+
+  it('step 9a: IPA opening (s_commit, L/R, c, f) matches halo2', () => {
+    const f16c = (h: string) =>
+      Array.from({ length: 16 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const pPoly = f16c(ipa.ppoly);
+    const pBlind = leHex(ipa.pblind);
+    const x3 = leHex(ipa.x3);
+    const xi = leHex(ipa.ipa_xi);
+    const z = leHex(ipa.ipa_z);
+    const U = pt(ipa.ipa_u);
+    const uChals = [
+      'b15f4ee0cce35028b37af707eb8cefd776ffc1acd604abd0a23cd37331f14124',
+      '4d3aabab2f303901c3fe70dcd7756016820caa83d0f95ba07fc6c004809b1501',
+      'e5861f62bb28f4c2dc42c8314a88c0ce0cb13e3014724d8fa010cf52158f7224',
+      '2219973eb73a35339de76ac5b6fc7a13692e45f14e2b901822e496be38b43e01',
+    ].map(leHex);
+    const tail = bytes(ipa.proof_tail); // proof[800..1280]
+
+    // Position the RNG at the IPA's s_poly draw: 52 prior draws (advice 14 +
+    // permutation 18 + vanishing-random 17 + h-pieces 2 + q_prime_blind 1).
+    const rng = new CounterRng();
+    for (let i = 0; i < 52; i++) rng.nextScalar();
+
+    const { sCommit, lr, c, f } = buildIPA(pPoly, pBlind, x3, G_COEFF, W, U, xi, z, uChals, rng, 4);
+    expect(hex(Vesta.toBytes(sCommit))).toBe(hex(tail.subarray(128, 160)));
+    for (let j = 0; j < 4; j++) {
+      expect(hex(Vesta.toBytes(lr[j][0]))).toBe(
+        hex(tail.subarray(160 + j * 64, 160 + j * 64 + 32)),
+      );
+      expect(hex(Vesta.toBytes(lr[j][1]))).toBe(
+        hex(tail.subarray(160 + j * 64 + 32, 160 + j * 64 + 64)),
+      );
+    }
+    expect(fe(c)).toBe(hex(tail.subarray(416, 448)));
+    expect(fe(f)).toBe(hex(tail.subarray(448, 480)));
   });
 });

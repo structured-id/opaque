@@ -256,3 +256,86 @@ export function buildFoldedH(
   for (const e of exprs) for (let i = 0; i < extN; i++) H[i] = Fp.add(Fp.mul(H[i], y), e[i]);
   return H;
 }
+
+/** Inner product Σ aᵢ·bᵢ over Fp. */
+function innerProduct(a: bigint[], b: bigint[]): bigint {
+  let acc = 0n;
+  for (let i = 0; i < a.length; i++) acc = Fp.add(acc, Fp.mul(a[i], b[i]));
+  return acc;
+}
+
+/**
+ * IPA opening (halo2 poly/commitment/prover.rs create_proof) for polynomial
+ * `pPoly` (n coeffs), blind `pBlind`, opened at `x3`. Generators g (coeff basis),
+ * w (blinding), u (inner-product). Challenges xi/z and the per-round u_j are taken
+ * from the transcript (passed in). RNG (continuing the prover's CounterRng):
+ * s_poly (n coeffs), s_blind, then per round l_rand, r_rand.
+ */
+export function buildIPA(
+  pPoly: bigint[],
+  pBlind: bigint,
+  x3: bigint,
+  g: { x: bigint; y: bigint }[],
+  w: { x: bigint; y: bigint },
+  u: { x: bigint; y: bigint },
+  xi: bigint,
+  z: bigint,
+  uChallenges: bigint[],
+  rng: CounterRng,
+  k: number,
+): { sCommit: Point; lr: [Point, Point][]; c: bigint; f: bigint } {
+  const n = 1 << k;
+  // Random s(X) with a root at x3.
+  const sPoly = Array.from({ length: n }, () => rng.nextScalar());
+  sPoly[0] = Fp.sub(sPoly[0], evalPolynomial(sPoly, x3));
+  const sBlind = rng.nextScalar();
+  const sCommit = Vesta.add(Vesta.msm(sPoly, g), Vesta.scalarMul(sBlind, w));
+
+  // P' = ξ·s + p, rooted at x3.
+  const pPrime = sPoly.map((s, i) => Fp.add(Fp.mul(s, xi), pPoly[i]));
+  pPrime[0] = Fp.sub(pPrime[0], evalPolynomial(pPrime, x3));
+  let f = Fp.add(Fp.mul(sBlind, xi), pBlind);
+
+  let p = pPrime;
+  let b: bigint[] = [];
+  let cur = 1n;
+  for (let i = 0; i < n; i++) {
+    b.push(cur);
+    cur = Fp.mul(cur, x3);
+  }
+  let gp = g.slice();
+
+  const lr: [Point, Point][] = [];
+  for (let j = 0; j < k; j++) {
+    const half = 1 << (k - j - 1);
+    const lBase = Vesta.msm(p.slice(half), gp.slice(0, half));
+    const rBase = Vesta.msm(p.slice(0, half), gp.slice(half));
+    const vL = innerProduct(p.slice(half), b.slice(0, half));
+    const vR = innerProduct(p.slice(0, half), b.slice(half));
+    const lRand = rng.nextScalar();
+    const rRand = rng.nextScalar();
+    const lj = Vesta.add(
+      lBase,
+      Vesta.add(Vesta.scalarMul(Fp.mul(vL, z), u), Vesta.scalarMul(lRand, w)),
+    );
+    const rj = Vesta.add(
+      rBase,
+      Vesta.add(Vesta.scalarMul(Fp.mul(vR, z), u), Vesta.scalarMul(rRand, w)),
+    );
+    lr.push([lj, rj]);
+
+    const uj = uChallenges[j];
+    const ujInv = Fp.inv(uj);
+    for (let i = 0; i < half; i++) {
+      p[i] = Fp.add(p[i], Fp.mul(p[i + half], ujInv));
+      b[i] = Fp.add(b[i], Fp.mul(b[i + half], uj));
+    }
+    p = p.slice(0, half);
+    b = b.slice(0, half);
+    const ng: Point[] = [];
+    for (let i = 0; i < half; i++) ng.push(Vesta.add(gp[i], Vesta.scalarMul(uj, gp[i + half])));
+    gp = ng as { x: bigint; y: bigint }[];
+    f = Fp.add(f, Fp.add(Fp.mul(lRand, ujInv), Fp.mul(rRand, uj)));
+  }
+  return { sCommit, lr, c: p[0], f };
+}
