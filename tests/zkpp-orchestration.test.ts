@@ -123,3 +123,13 @@ describe('synthesize orchestration — gadget_c binding (fixed-base mul r·G2 + 
     expect(fe(com.y)).toBe(gcBind.com_y); // com_point M.y (col25 row89)
   });
 });
+
+import { fixedBaseWindows } from '../src/zkpp/circuit/ecc-chip.js';
+
+import fbWindows from './fixtures/zkpp-fixed-base-windows.json';
+
+describe('synthesize orchestration — R46 fixed-base mul window decomposition (col26)', () => {
+  it('fixedBaseWindows(3) reproduces real circuit col26 (85 windows) byte-exact', () => {
+    expect(fixedBaseWindows(3n)).toEqual(fbWindows.col26);
+  });
+});

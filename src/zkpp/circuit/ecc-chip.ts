@@ -111,3 +111,18 @@ export function variableBaseMul(scalar: bigint, base: Point): Point {
   const lsb = bits[254];
   return lsb ? comp.acc : Pallas.add(comp.acc, Pallas.neg(base));
 }
+
+/**
+ * Fixed-base mul scalar decomposition (halo2_gadgets mul_fixed RunningSumConfig):
+ * the scalar split into `numWindows` little-endian FIXED_BASE_WINDOW_SIZE-bit
+ * windows (H = 2^3 = 8). window_i = (z >> 3i) & 7.
+ */
+export function fixedBaseWindows(scalar: bigint, numWindows = 85): number[] {
+  const windows: number[] = [];
+  let z = scalar;
+  for (let i = 0; i < numWindows; i++) {
+    windows.push(Number(z & 7n));
+    z >>= 3n;
+  }
+  return windows;
+}
