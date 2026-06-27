@@ -8,6 +8,7 @@
 import { Fp } from './field.js';
 import { Vesta, type Point } from './curve.js';
 import { omegaForSize } from './fft.js';
+import { ZETA } from './domain.js';
 
 /** Fp::DELTA — the permutation argument's coset separator (column j uses δ^j). */
 export const DELTA = (() => {
@@ -122,14 +123,18 @@ export function commitPermutationZ(
   params: ProvingParams,
   zPolys: bigint[][],
   rng: CounterRng,
-): Point[] {
+): { commitments: Point[]; blindedZ: bigint[][] } {
   const { n, blindingFactors, gLagrange, w } = params;
-  return zPolys.map((z) => {
+  const commitments: Point[] = [];
+  const blindedZ: bigint[][] = [];
+  for (const z of zPolys) {
     const zc = z.slice();
     for (let r = n - blindingFactors; r < n; r++) zc[r] = rng.nextScalar();
     const blind = rng.nextScalar();
-    return Vesta.add(Vesta.msm(zc, gLagrange), Vesta.scalarMul(blind, w));
-  });
+    commitments.push(Vesta.add(Vesta.msm(zc, gLagrange), Vesta.scalarMul(blind, w)));
+    blindedZ.push(zc);
+  }
+  return { commitments, blindedZ };
 }
 
 /**
@@ -146,4 +151,78 @@ export function commitVanishingRandom(
   const coeffs = Array.from({ length: n }, () => rng.nextScalar());
   const blind = rng.nextScalar();
   return Vesta.add(Vesta.msm(coeffs, gCoeff), Vesta.scalarMul(blind, w));
+}
+
+/**
+ * Vanishing-argument folded constraint polynomial H on the extended coset
+ * (halo2 distribute_powers(expressions, y) then evaluate), for the toy circuit
+ * a·b=c with a 3-set permutation. Expression order matches halo2:
+ *   gate, perm-first-set, perm-last-set, perm-inter-sets, perm-main-per-set.
+ * Folded by Horner with y (first expression gets the highest power).
+ */
+export interface FoldedHCosets {
+  adv0: bigint[];
+  adv1: bigint[];
+  inst: bigint[];
+  sel: bigint[];
+  z: bigint[][];
+  sigma: bigint[][];
+  l0: bigint[];
+  lLast: bigint[];
+  lBlind: bigint[];
+}
+
+export function buildFoldedH(
+  c: FoldedHCosets,
+  beta: bigint,
+  gamma: bigint,
+  y: bigint,
+  k: number,
+  extendedK: number,
+  blindingFactors: number,
+): bigint[] {
+  const extN = 1 << extendedK;
+  const omegaExt = omegaForSize(extendedK);
+  const rotMul = 1 << (extendedK - k);
+  const rotNext = rotMul; // Rotation::next() = +1 row
+  const rotLast = -(blindingFactors + 1) * rotMul; // Rotation(-(bf+1))
+  const at = (a: bigint[], i: number, shift: number) => a[(((i + shift) % extN) + extN) % extN];
+  // X polynomial on the ζ-coset: X[i] = ζ·ω_extⁱ.
+  const X: bigint[] = [];
+  let wv = ZETA;
+  for (let i = 0; i < extN; i++) {
+    X.push(wv);
+    wv = Fp.mul(wv, omegaExt);
+  }
+  const cols = [c.adv0, c.adv1, c.inst];
+  const exprs: bigint[][] = [];
+  const mk = (f: (i: number) => bigint) => Array.from({ length: extN }, (_, i) => f(i));
+
+  // Gate: selector·(adv0·adv1 - adv0@next).
+  exprs.push(mk((i) => Fp.mul(c.sel[i], Fp.sub(Fp.mul(c.adv0[i], c.adv1[i]), at(c.adv0, i, rotNext)))));
+  // Permutation, first set: (1 - Z_0)·l0.
+  exprs.push(mk((i) => Fp.mul(Fp.sub(1n, c.z[0][i]), c.l0[i])));
+  // Permutation, last set: (Z_last² - Z_last)·l_last.
+  exprs.push(mk((i) => Fp.mul(Fp.sub(Fp.square(c.z[2][i]), c.z[2][i]), c.lLast[i])));
+  // Permutation, inter-set: (Z_i - Z_{i-1}@last_rotation)·l0.
+  for (let s = 1; s < 3; s++) {
+    exprs.push(mk((i) => Fp.mul(Fp.sub(c.z[s][i], at(c.z[s - 1], i, rotLast)), c.l0[i])));
+  }
+  // Permutation, main identity per set: (left - right)·(1 - (l_last + l_blind)).
+  for (let s = 0; s < 3; s++) {
+    const col = cols[s];
+    const sig = c.sigma[s];
+    const cd0 = Fp.mul(beta, Fp.pow(DELTA, BigInt(s)));
+    exprs.push(
+      mk((i) => {
+        const left = Fp.mul(at(c.z[s], i, rotNext), Fp.add(Fp.add(col[i], Fp.mul(beta, sig[i])), gamma));
+        const right = Fp.mul(c.z[s][i], Fp.add(Fp.add(col[i], Fp.mul(cd0, X[i])), gamma));
+        return Fp.mul(Fp.sub(left, right), Fp.sub(1n, Fp.add(c.lLast[i], c.lBlind[i])));
+      }),
+    );
+  }
+  // Fold by Horner: acc = acc·y + e (first expression highest power).
+  const H = new Array<bigint>(extN).fill(0n);
+  for (const e of exprs) for (let i = 0; i < extN; i++) H[i] = Fp.add(Fp.mul(H[i], y), e[i]);
+  return H;
 }

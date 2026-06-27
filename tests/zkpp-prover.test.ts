@@ -11,6 +11,7 @@ import {
   permutationZ,
   commitPermutationZ,
   commitVanishingRandom,
+  buildFoldedH,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
@@ -127,7 +128,7 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
       lastZ = z[16 - (5 + 1)]; // z[n-(bf+1)]
     }
     // Commit each Z (blinding rows + blind continue the same RNG).
-    const commits = commitPermutationZ(PARAMS, zPolys, rng);
+    const { commitments: commits } = commitPermutationZ(PARAMS, zPolys, rng);
     commits.forEach((c, i) => expect(hex(Vesta.toBytes(c))).toBe(Z_COMMITS[i]));
   });
 
@@ -146,7 +147,7 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
       zPolys.push(z);
       lastZ = z[10];
     }
-    const zCommits = commitPermutationZ(PARAMS, zPolys, rng);
+    const { commitments: zCommits } = commitPermutationZ(PARAMS, zPolys, rng);
     // Vanishing random blinding commitment (coeff basis) — absorbed before y.
     const vanishingCommit = commitVanishingRandom(G_COEFF, W, 16, rng);
     expect(hex(Vesta.toBytes(vanishingCommit))).toBe(VANISHING_COMMIT);
@@ -172,5 +173,46 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     const coset1 = coeffToExtended(lagrangeToCoeff(advice[1]!, 4), 5);
     expect(coset0.map(fe)).toEqual(f32(toyH.adv_coset_0).map(fe));
     expect(coset1.map(fe)).toEqual(f32(toyH.adv_coset_1).map(fe));
+  });
+
+  it('step 6b: folded H (gate + permutation constraints, y-folded) matches halo2', () => {
+    const f32 = (h: string) =>
+      Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const Y = leHex('aa5e2e0c3f992b8a7b60a98a0f6697d624cdb1e5ad9cc89433bdbb8bfd15b41b');
+    const SIGMA = perm.sigma.map(f16);
+    const rng = new CounterRng();
+    const { advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], rng);
+    const instance0 = new Array<bigint>(16).fill(0n);
+    instance0[0] = 15n;
+    const cols = [advice[0]!, advice[1]!, instance0];
+    const zPolys: bigint[][] = [];
+    let lastZ = 1n;
+    for (let j = 0; j < 3; j++) {
+      const z = permutationZ(cols[j], SIGMA[j], BETA, GAMMA, Fp.pow(DELTA, BigInt(j)), 4, lastZ);
+      zPolys.push(z);
+      lastZ = z[10];
+    }
+    const { blindedZ } = commitPermutationZ(PARAMS, zPolys, rng);
+    const toCoset = (lag: bigint[]) => coeffToExtended(lagrangeToCoeff(lag, 4), 5);
+    const H = buildFoldedH(
+      {
+        adv0: toCoset(advice[0]!),
+        adv1: toCoset(advice[1]!),
+        inst: toCoset(instance0),
+        sel: f32(toyH.fixed_coset_0),
+        z: blindedZ.map(toCoset),
+        sigma: SIGMA.map(toCoset),
+        l0: f32(toyH.l0),
+        lLast: f32(toyH.l_last),
+        lBlind: f32(toyH.l_blind),
+      },
+      BETA,
+      GAMMA,
+      Y,
+      4,
+      5,
+      5,
+    );
+    expect(H.map(fe)).toEqual(f32(toyH.h_folded).map(fe));
   });
 });
