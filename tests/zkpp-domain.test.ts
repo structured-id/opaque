@@ -2,8 +2,15 @@
 // interop_vectors.rs (dump_domain): k=2, j=4 ⇒ extended_k=4 (16), poly [1,2,3,4].
 import { describe, it, expect } from 'vitest';
 import { Fp } from '../src/zkpp/field.js';
-import { coeffToExtended, lagrangeToCoeff, extendedToCoeff } from '../src/zkpp/domain.js';
+import {
+  coeffToExtended,
+  lagrangeToCoeff,
+  extendedToCoeff,
+  divideByVanishing,
+  vanishingTInv,
+} from '../src/zkpp/domain.js';
 import { bestFft, omegaForSize } from '../src/zkpp/fft.js';
+import toyH from './fixtures/toy-h.json';
 
 const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 const fe = (v: bigint) => hex(Fp.toBytes(v));
@@ -46,4 +53,21 @@ describe('EvaluationDomain coeff_to_extended — halo2 interop', () => {
     const back = extendedToCoeff(coeffToExtended(coeff, 4), 2, 4, 3);
     expect(back.slice(0, 4).map(fe)).toEqual(coeff.map(fe));
   });
+
+  it('divide_by_vanishing + extended_to_coeff: folded H → h(X) (halo2 toy)', () => {
+    // k=4, extended_k=5, quotient_poly_degree=2. Vectors from vanishing construct.
+    const f32 = (h: string) =>
+      Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const hFolded = f32(toyH.h_folded);
+    const divided = divideByVanishing(hFolded, vanishingTInv(4, 5));
+    const hPoly = extendedToCoeff(divided, 4, 5, 2);
+    expect(hPoly.map(fe)).toEqual(f32(toyH.h_poly).map(fe));
+  });
 });
+
+const leHex = (h: string): bigint => {
+  let v = 0n;
+  for (let i = h.length - 2; i >= 0; i -= 2)
+    v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
+  return v;
+};
