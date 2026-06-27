@@ -570,4 +570,30 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
       expect(fe(evals[i])).toBe(hex(proof.subarray(384 + i * 32, 384 + i * 32 + 32)));
     }
   });
+
+  it('lookup: h_poly (folded H -> divide -> extended_to_coeff) matches halo2', () => {
+    const f64 = (h: string) => Array.from({ length: 64 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const f48 = (h: string) => Array.from({ length: 48 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const cin = f16(lookup.cin);
+    const ctab = f16(lookup.ctab);
+    const beta = leHex(lookup.beta);
+    const gamma = leHex(lookup.gamma);
+    const Y = leHex(lookup.y);
+    const rng = new CounterRng();
+    for (let i = 0; i < 7; i++) rng.nextScalar();
+    const { pInput, pTable } = permuteExpressionPair(cin, ctab, 10, 5, rng);
+    rng.nextScalar();
+    rng.nextScalar();
+    const { zPoly } = commitLookupProduct(cin, ctab, pInput, pTable, beta, gamma, PARAMS, rng);
+    const toCoset6 = (lag: bigint[]) => coeffToExtended(lagrangeToCoeff(lag, 4), 6);
+    const exprs = buildLookupExpressions(
+      { z: toCoset6(zPoly), ap: toCoset6(pInput), sp: toCoset6(pTable), cin: toCoset6(cin), ctab: toCoset6(ctab), l0: f64(lookup.l0), lLast: f64(lookup.llast), lBlind: f64(lookup.lblind) },
+      beta, gamma, 4, 6,
+    );
+    const all = [new Array<bigint>(64).fill(0n), ...exprs];
+    const H = new Array<bigint>(64).fill(0n);
+    for (const e of all) for (let i = 0; i < 64; i++) H[i] = Fp.add(Fp.mul(H[i], Y), e[i]);
+    const hPoly = extendedToCoeff(divideByVanishing(H, vanishingTInv(4, 6)), 4, 6, 3);
+    expect(hPoly.map(fe)).toEqual(f48(lookup.hpoly).map(fe));
+  });
 });
