@@ -104,3 +104,22 @@ describe('synthesize orchestration — region R34 (gadget_c HashToCurve Poseidon
     expect(cells.partialSbox.map((v) => fe(v))).toEqual(pow5r34.psb);
   });
 });
+
+import { hashToCurveOutside } from '../src/zkpp/hash-to-curve.js';
+import { Pallas } from '../src/zkpp/curve.js';
+import { G2 } from '../src/zkpp/binding.js';
+import gcBind from './fixtures/zkpp-gadget-c-binding.json';
+
+describe('synthesize orchestration — gadget_c binding (fixed-base mul r·G2 + Pedersen commitment)', () => {
+  it('H_p witness + r·G2 + com = H_p + r·G2 reproduce real circuit cols 22/24/25 byte-exact', () => {
+    const pwBuf = new Uint8Array(128);
+    pwBuf.set(new TextEncoder().encode('Str0ngP@ss'));
+    const hp = hashToCurveOutside(pwBuf).point as { x: bigint; y: bigint };
+    const rG2 = Pallas.scalarMul(3n, G2) as { x: bigint; y: bigint };
+    const com = Pallas.add(hp, rG2) as { x: bigint; y: bigint };
+    expect(fe(hp.x)).toBe(gcBind.hp_x); // H_p NonIdentityPoint witness (col22 row0)
+    expect(fe(rG2.x)).toBe(gcBind.rg2_x); // fixed-base mul result r·G2 (col24 row87)
+    expect(fe(com.x)).toBe(gcBind.com_x); // com_point M.x (col24 row89)
+    expect(fe(com.y)).toBe(gcBind.com_y); // com_point M.y (col25 row89)
+  });
+});
