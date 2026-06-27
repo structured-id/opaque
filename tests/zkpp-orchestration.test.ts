@@ -88,3 +88,19 @@ describe('synthesize orchestration — region R67 (gadget_d hash bit-decompositi
     expect(match).toBeDefined();
   });
 });
+
+import { bytesToFieldElements } from '../src/zkpp/poseidon.js';
+import pow5r34 from './fixtures/zkpp-pow5-r34.json';
+
+describe('synthesize orchestration — region R34 (gadget_c HashToCurve Poseidon, password input)', () => {
+  it('permuteWithCells([fe0,fe1,2<<64]) of packed password reproduces real circuit cols 34-37', () => {
+    const pwBuf = new Uint8Array(128);
+    pwBuf.set(new TextEncoder().encode('Str0ngP@ss'));
+    const fes = bytesToFieldElements(pwBuf);
+    const cells = permuteWithCells([fes[0], fes[1], 2n << 64n]);
+    expect(cells.states.map((s) => fe(s[0]))).toEqual(pow5r34.st0);
+    expect(cells.states.map((s) => fe(s[1]))).toEqual(pow5r34.st1);
+    expect(cells.states.map((s) => fe(s[2]))).toEqual(pow5r34.st2);
+    expect(cells.partialSbox.map((v) => fe(v))).toEqual(pow5r34.psb);
+  });
+});
