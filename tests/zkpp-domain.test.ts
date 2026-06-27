@@ -2,7 +2,8 @@
 // interop_vectors.rs (dump_domain): k=2, j=4 ⇒ extended_k=4 (16), poly [1,2,3,4].
 import { describe, it, expect } from 'vitest';
 import { Fp } from '../src/zkpp/field.js';
-import { coeffToExtended } from '../src/zkpp/domain.js';
+import { coeffToExtended, lagrangeToCoeff, extendedToCoeff } from '../src/zkpp/domain.js';
+import { bestFft, omegaForSize } from '../src/zkpp/fft.js';
 
 const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 const fe = (v: bigint) => hex(Fp.toBytes(v));
@@ -31,5 +32,18 @@ describe('EvaluationDomain coeff_to_extended — halo2 interop', () => {
     const ext = coeffToExtended([1n, 2n, 3n, 4n], 4);
     expect(ext.length).toBe(16);
     expect(ext.map(fe)).toEqual(DOM_EXT);
+  });
+
+  it('lagrangeToCoeff inverts the forward NTT', () => {
+    const coeff = [1n, 2n, 3n, 4n];
+    const lag = [...coeff];
+    bestFft(lag, omegaForSize(2), 2);
+    expect(lagrangeToCoeff(lag, 2).map(fe)).toEqual(coeff.map(fe));
+  });
+
+  it('extendedToCoeff inverts coeffToExtended', () => {
+    const coeff = [1n, 2n, 3n, 4n];
+    const back = extendedToCoeff(coeffToExtended(coeff, 4), 2, 4, 3);
+    expect(back.slice(0, 4).map(fe)).toEqual(coeff.map(fe));
   });
 });

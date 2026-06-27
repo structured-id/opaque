@@ -35,3 +35,61 @@ export function coeffToExtended(coeffs: bigint[], extendedK: number): bigint[] {
   bestFft(a, omegaForSize(extendedK), extendedK);
   return a;
 }
+
+/** Inverse NTT in place: bestFft with ω⁻¹ then scale by `divisor` (= sizeⁿ⁻¹). */
+function ifft(a: bigint[], omegaInv: bigint, logN: number, divisor: bigint): void {
+  bestFft(a, omegaInv, logN);
+  for (let i = 0; i < a.length; i++) a[i] = Fp.mul(a[i], divisor);
+}
+
+/** Lagrange evaluations (size 2^k) → coefficient polynomial (halo2 lagrange_to_coeff). */
+export function lagrangeToCoeff(a: bigint[], k: number): bigint[] {
+  const n = 1 << k;
+  const out = a.map((v) => Fp.mod(v));
+  ifft(out, Fp.inv(omegaForSize(k)), k, Fp.inv(BigInt(n)));
+  return out;
+}
+
+/** Undo the ζ-coset shift: a[i] *= ζ^(-(i mod 3)) (coset_powers reversed). */
+function distributePowersZetaInverse(a: bigint[]): void {
+  for (let i = 0; i < a.length; i++) {
+    const m = i % 3;
+    if (m === 1) a[i] = Fp.mul(a[i], ZETA2);
+    else if (m === 2) a[i] = Fp.mul(a[i], ZETA);
+  }
+}
+
+/**
+ * Extended coset evaluations → coefficient polynomial (halo2 extended_to_coeff):
+ * inverse extended NTT, undo the ζ-coset shift, truncate to n·quotientPolyDegree.
+ */
+export function extendedToCoeff(
+  a: bigint[],
+  k: number,
+  extendedK: number,
+  quotientPolyDegree: number,
+): bigint[] {
+  const out = a.map((v) => Fp.mod(v));
+  ifft(out, Fp.inv(omegaForSize(extendedK)), extendedK, Fp.inv(BigInt(1 << extendedK)));
+  distributePowersZetaInverse(out);
+  return out.slice(0, (1 << k) * quotientPolyDegree);
+}
+
+/** 1/t(X) evaluations on the ζ-coset, period 2^(extendedK-k) (halo2 t_evaluations). */
+export function vanishingTInv(k: number, extendedK: number): bigint[] {
+  const period = 1 << (extendedK - k);
+  const n = BigInt(1 << k);
+  const extOmegaN = Fp.pow(omegaForSize(extendedK), n);
+  let cur = Fp.pow(ZETA, n); // ζⁿ
+  const t: bigint[] = [];
+  for (let i = 0; i < period; i++) {
+    t.push(Fp.inv(Fp.sub(cur, 1n)));
+    cur = Fp.mul(cur, extOmegaN);
+  }
+  return t;
+}
+
+/** Divide an extended-coset polynomial by t(X)=Xⁿ-1: a[i] *= tInv[i mod period]. */
+export function divideByVanishing(a: bigint[], tInv: bigint[]): bigint[] {
+  return a.map((v, i) => Fp.mul(v, tInv[i % tInv.length]));
+}
