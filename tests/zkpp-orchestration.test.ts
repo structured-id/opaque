@@ -54,3 +54,37 @@ describe('synthesize orchestration — region R5 (Pow5 Poseidon permutation, fir
     expect(cells.partialSbox.map((v) => fe(v))).toEqual(pow5r5.psb);
   });
 });
+
+import { breachHash, hashBits } from '../src/zkpp/circuit/gadget-d.js';
+import gdBits from './fixtures/zkpp-gadget-d-bits.json';
+
+const leHexToBig = (h: string): bigint => {
+  let v = 0n;
+  for (let i = h.length - 2; i >= 0; i -= 2) v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
+  return v;
+};
+
+describe('synthesize orchestration — region R67 (gadget_d hash bit-decomposition)', () => {
+  it('col39 = hashBits(breach_hash), col40 = recomposition running sum (LSB-first)', () => {
+    const hash = leHexToBig(gdBits.col40[254]); // full recomposition = the hash
+    // col39 = the 255 LSB-first bits of the hash.
+    expect(hashBits(hash).join('')).toBe(gdBits.col39.map((h: string) => Number(leHexToBig(h))).join(''));
+    // col40 = running sum of bit_i * 2^i.
+    let acc = 0n;
+    const recomp: bigint[] = [];
+    const bits = hashBits(hash);
+    for (let i = 0; i < 255; i++) {
+      acc += BigInt(bits[i]) << BigInt(i);
+      recomp.push(acc);
+    }
+    expect(recomp.map((v) => fe(v))).toEqual(gdBits.col40);
+  });
+
+  it('breach_hash matches breachHash(password, padLen) for the circuit pad length', () => {
+    const hash = leHexToBig(gdBits.col40[254]);
+    const pw = [...new TextEncoder().encode('Str0ngP@ss')];
+    const padLens = [31, 62, 93, 124, 128];
+    const match = padLens.find((p) => breachHash(pw, p) === hash);
+    expect(match).toBeDefined();
+  });
+});
