@@ -13,9 +13,11 @@ import {
   commitVanishingRandom,
   buildFoldedH,
   commitHPieces,
+  evalPolynomial,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
+import { omegaForSize } from '../src/zkpp/fft.js';
 import {
   coeffToExtended,
   lagrangeToCoeff,
@@ -156,7 +158,7 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     }
     const { commitments: zCommits } = commitPermutationZ(PARAMS, zPolys, rng);
     // Vanishing random blinding commitment (coeff basis) — absorbed before y.
-    const vanishingCommit = commitVanishingRandom(G_COEFF, W, 16, rng);
+    const { commitment: vanishingCommit } = commitVanishingRandom(G_COEFF, W, 16, rng);
     expect(hex(Vesta.toBytes(vanishingCommit))).toBe(VANISHING_COMMIT);
 
     const t = new Transcript();
@@ -245,7 +247,7 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
       lastZ = z[10];
     }
     const { commitments: zCommits, blindedZ } = commitPermutationZ(PARAMS, zPolys, rng);
-    const vanishingCommit = commitVanishingRandom(G_COEFF, W, 16, rng);
+    const { commitment: vanishingCommit } = commitVanishingRandom(G_COEFF, W, 16, rng);
     // Quotient h(X): folded constraints / t(X), back to coefficients.
     const toCoset = (lag: bigint[]) => coeffToExtended(lagrangeToCoeff(lag, 4), 5);
     const folded = buildFoldedH(
@@ -285,5 +287,53 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     t.squeezeChallenge(); // y
     for (const c of hCommits) t.commonPoint(c);
     expect(t.squeezeChallenge()).toBe(X_EXP);
+  });
+
+  it('step 8: evaluations at x (proof[256..800]) match halo2', () => {
+    const f32 = (h: string) => Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const X = leHex('8f9a7d0585b6ac4219645b208fa168aa5352e3a2bed204fb0c3a2c005fd5130e');
+    // proof[256..800] = 17 evaluation scalars.
+    const EVALS =
+      '50452872347baf0d17f9293a6fdf60ecba8a8396865dec96bc56bcb0be2c9b100179b165f923177088752c1ab8cd00509fdf05d1b328cd1faa4d294ed6ae990cab84131ff6f23467f57b1bd89313412b78f72e90dd83cafaf7fee7e657ce3b28e48b225f4e50350276d368bb51a34d66725a820e4e0ca50d9b0f2bcd47c64922288de04be8bb12ca98b7093cf4d7e7ff834d9192a26cbab42e6cea2d848b3d23d896e7c6a57116c1ea68a6bd19b359f523cf2888773de8d60eb2fc019824a91eaa94002a1d9a36f228634d7d531280c8960f6c97cabd4990033be0c8ced4863890b369343bcfac70b4288f64b220d46e0b9590e220fb88d62d8c436f6387ae14289fcb232b27a24fdadf96b2cff688437a8e94bd4fdf0f94accbe32eeef5ed286dfda276b9bb6edabbf31d820a1d95f5e05701fc9ee92cfcb05e6dc311d6d43e4d2502cf26c250ccb89f8f16d3abd35873091804a86ee4bb24a0c3c7343ffd1daefb366682b350a04b906ee73407edbd97c55c57039d811d552874c76a25d916de5199c9cbb68cf608c61c328b85a48d4511d077d3908e63b804843b3c80951a1375e9a73a06a87efc87c2727885135bb630c3dd7729c8b2bb8eec1fb0bfc82ac8447b70bd78689312e159bbefbd0cd51058fa1b379f8c186e2f5c651005a02b85e3dc87c6a983d2888f9411fb151f87b4d78a7cb4a959f488bc311c4d28131fd4322a2614d88a48dad0b19333f38b42447793c407910ee5526e4c6a6f8ff037';
+    const expected = Array.from({ length: 17 }, (_, i) => leHex(EVALS.slice(i * 64, i * 64 + 64))).map(fe);
+
+    const SIGMA = perm.sigma.map(f16);
+    const rng = new CounterRng();
+    const { advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], rng);
+    const instance0 = new Array<bigint>(16).fill(0n);
+    instance0[0] = 15n;
+    const cols = [advice[0]!, advice[1]!, instance0];
+    const zPolys: bigint[][] = [];
+    let lastZ = 1n;
+    for (let j = 0; j < 3; j++) {
+      const z = permutationZ(cols[j], SIGMA[j], BETA, GAMMA, Fp.pow(DELTA, BigInt(j)), 4, lastZ);
+      zPolys.push(z);
+      lastZ = z[10];
+    }
+    const { blindedZ } = commitPermutationZ(PARAMS, zPolys, rng);
+    const { randomPoly } = commitVanishingRandom(G_COEFF, W, 16, rng);
+
+    const adv0c = lagrangeToCoeff(advice[0]!, 4);
+    const adv1c = lagrangeToCoeff(advice[1]!, 4);
+    const instc = lagrangeToCoeff(instance0, 4);
+    const selc = extendedToCoeff(f32(toyH.fixed_coset_0), 4, 5, 2).slice(0, 16);
+    const zc = blindedZ.map((z) => lagrangeToCoeff(z, 4));
+    const sigc = SIGMA.map((s) => lagrangeToCoeff(s, 4));
+
+    const omega = omegaForSize(4);
+    const xw = Fp.mul(X, omega); // rotate next
+    const xLast = Fp.mul(X, Fp.pow(omega, 10n)); // rotate -(bf+1) = -6 ≡ +10
+
+    const evals: bigint[] = [];
+    evals.push(evalPolynomial(instc, X)); // instance query 0:0
+    evals.push(evalPolynomial(adv0c, X), evalPolynomial(adv1c, X), evalPolynomial(adv0c, xw)); // advice
+    evals.push(evalPolynomial(selc, X)); // fixed 0:0
+    evals.push(evalPolynomial(randomPoly, X)); // vanishing random
+    for (let i = 0; i < 3; i++) evals.push(evalPolynomial(sigc[i], X)); // permutation common (σ)
+    for (let s = 0; s < 3; s++) {
+      evals.push(evalPolynomial(zc[s], X), evalPolynomial(zc[s], xw));
+      if (s < 2) evals.push(evalPolynomial(zc[s], xLast));
+    }
+    expect(evals.map(fe)).toEqual(expected);
   });
 });

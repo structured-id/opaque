@@ -147,10 +147,20 @@ export function commitVanishingRandom(
   w: { x: bigint; y: bigint },
   n: number,
   rng: CounterRng,
-): Point {
+): { commitment: Point; randomPoly: bigint[] } {
   const coeffs = Array.from({ length: n }, () => rng.nextScalar());
   const blind = rng.nextScalar();
-  return Vesta.add(Vesta.msm(coeffs, gCoeff), Vesta.scalarMul(blind, w));
+  return {
+    commitment: Vesta.add(Vesta.msm(coeffs, gCoeff), Vesta.scalarMul(blind, w)),
+    randomPoly: coeffs,
+  };
+}
+
+/** Evaluate a coefficient polynomial at a point (Horner), halo2 eval_polynomial. */
+export function evalPolynomial(coeff: bigint[], point: bigint): bigint {
+  let acc = 0n;
+  for (let i = coeff.length - 1; i >= 0; i--) acc = Fp.add(Fp.mul(acc, point), coeff[i]);
+  return acc;
 }
 
 /**
