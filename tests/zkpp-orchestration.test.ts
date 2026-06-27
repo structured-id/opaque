@@ -133,3 +133,76 @@ describe('synthesize orchestration — R46 fixed-base mul window decomposition (
     expect(fixedBaseWindows(3n)).toEqual(fbWindows.col26);
   });
 });
+
+import { poseidonHash2 } from '../src/zkpp/poseidon.js';
+import gbChain from './fixtures/zkpp-gadgetb-chain.json';
+
+describe('synthesize orchestration — gadget_b Poseidon hash-chain (R9/R13/R17/R21/R25)', () => {
+  it('chain H(h_prev,0) reproduces real circuit Pow5 cols18-21 for all 5 remaining hashes', () => {
+    // gadget_b registration: all input fes are 0 → chain h0=H(0,0), h1=H(h0,0), ...
+    const h0 = poseidonHash2(0n, 0n);
+    const h1 = poseidonHash2(h0, 0n);
+    const h2 = poseidonHash2(h1, 0n);
+    const h3 = poseidonHash2(h2, 0n);
+    const h4 = poseidonHash2(h3, 0n);
+    const cases: [string, bigint][] = [
+      ['R9', h0], ['R13', h1], ['R17', h2], ['R21', h3], ['R25', h4],
+    ];
+    for (const [name, hPrev] of cases) {
+      const c = permuteWithCells([hPrev, 0n, 2n << 64n]);
+      const ref = (gbChain as any)[name];
+      expect(c.states.map((s) => fe(s[0])), name).toEqual(ref.st0);
+      expect(c.states.map((s) => fe(s[1])), name).toEqual(ref.st1);
+      expect(c.states.map((s) => fe(s[2])), name).toEqual(ref.st2);
+      expect(c.partialSbox.map((v) => fe(v)), name).toEqual(ref.psb);
+    }
+  });
+});
+
+import gcChainP from './fixtures/zkpp-gadgetc-chain.json';
+
+describe('synthesize orchestration — gadget_c HashToCurve Poseidon chain (R37/R40/R43)', () => {
+  it('chain H(u_prev,fe_i) of packed password reproduces real circuit cols34-37', () => {
+    const pwBuf = new Uint8Array(128);
+    pwBuf.set(new TextEncoder().encode('Str0ngP@ss'));
+    const fes = bytesToFieldElements(pwBuf); // 5 field elements
+    const u0 = poseidonHash2(fes[0], fes[1]);
+    const u1 = poseidonHash2(u0, fes[2]);
+    const u2 = poseidonHash2(u1, fes[3]);
+    const cases: [string, bigint, bigint][] = [
+      ['R37', u0, fes[2]], ['R40', u1, fes[3]], ['R43', u2, fes[4]],
+    ];
+    for (const [name, uPrev, feNext] of cases) {
+      const c = permuteWithCells([uPrev, feNext, 2n << 64n]);
+      const ref = (gcChainP as any)[name];
+      expect(c.states.map((s) => fe(s[0])), name).toEqual(ref.st0);
+      expect(c.states.map((s) => fe(s[1])), name).toEqual(ref.st1);
+      expect(c.states.map((s) => fe(s[2])), name).toEqual(ref.st2);
+      expect(c.partialSbox.map((v) => fe(v)), name).toEqual(ref.psb);
+    }
+  });
+});
+
+import gdChainP from './fixtures/zkpp-gadgetd-chain.json';
+
+describe('synthesize orchestration — gadget_d breach Poseidon chain (R57/R60/R63/R66)', () => {
+  it('chain hashes packed password (same fes) reproducing real circuit cols46-49', () => {
+    const pwBuf = new Uint8Array(128);
+    pwBuf.set(new TextEncoder().encode('Str0ngP@ss'));
+    const fes = bytesToFieldElements(pwBuf);
+    const u0 = poseidonHash2(fes[0], fes[1]);
+    const u1 = poseidonHash2(u0, fes[2]);
+    const u2 = poseidonHash2(u1, fes[3]);
+    const cases: [string, bigint, bigint][] = [
+      ['R57', fes[0], fes[1]], ['R60', u0, fes[2]], ['R63', u1, fes[3]], ['R66', u2, fes[4]],
+    ];
+    for (const [name, a, b] of cases) {
+      const c = permuteWithCells([a, b, 2n << 64n]);
+      const ref = (gdChainP as any)[name];
+      expect(c.states.map((s) => fe(s[0])), name).toEqual(ref.st0);
+      expect(c.states.map((s) => fe(s[1])), name).toEqual(ref.st1);
+      expect(c.states.map((s) => fe(s[2])), name).toEqual(ref.st2);
+      expect(c.partialSbox.map((v) => fe(v)), name).toEqual(ref.psb);
+    }
+  });
+});
