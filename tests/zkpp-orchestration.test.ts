@@ -22,3 +22,22 @@ describe('synthesize orchestration — region R0 (gadget A policy engine)', () =
     }
   });
 });
+
+import { gadgetBDiffAcc } from '../src/zkpp/circuit/gadget-b.js';
+import gbPlaced from './fixtures/zkpp-gadget-b-placed.json';
+
+describe('synthesize orchestration — region R26 (gadget B diff-accumulator)', () => {
+  it('gadget_b diff-acc reproduces real circuit advice cols 11-16 (rows 0-127) byte-exact', () => {
+    const pwBytes = [...new TextEncoder().encode('Str0ngP@ss')];
+    const pNew = Array.from({ length: 128 }, (_, i) => (i < pwBytes.length ? BigInt(pwBytes[i]) : 0n));
+    const w = gadgetBDiffAcc(pNew, []);
+    const Z = Array(128).fill(0n);
+    // col11 p_new, col12 p_old(0), col13 diff, col14 diff_acc, col15 diff_inv(@127), col16 mode(0).
+    const diffInvCol = [...Array(127).fill(0n), w.diffInv];
+    const myCols = [pNew, Z, w.diff, w.acc, diffInvCol, Z];
+    for (let c = 0; c < 6; c++) {
+      const got = myCols[c].map((v) => fe(v));
+      expect(got).toEqual(gbPlaced.cols[c]);
+    }
+  });
+});
