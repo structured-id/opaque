@@ -427,3 +427,80 @@ export function permuteExpressionPair(
   for (let i = 0; i < bf + 1; i++) pTable.push(rng.nextScalar());
   return { pInput, pTable };
 }
+
+/**
+ * Lookup grand-product Z (halo2 lookup::commit_product). With compressed input
+ * `cin`, table `ctab`, and permuted A'/S':
+ *   lp[i] = (cin[i]+β)(ctab[i]+γ) / ((A'[i]+β)(S'[i]+γ))
+ *   Z[0]=1, Z[i+1]=Z[i]·lp[i]; first n-bf rows are the running product, last bf
+ *   rows are RNG blinds; then a commitment blind. (n-bf-1 products are computed.)
+ */
+export function commitLookupProduct(
+  cin: bigint[],
+  ctab: bigint[],
+  pInput: bigint[],
+  pTable: bigint[],
+  beta: bigint,
+  gamma: bigint,
+  params: ProvingParams,
+  rng: CounterRng,
+): { commitment: Point; zPoly: bigint[] } {
+  const { n, blindingFactors, gLagrange, w } = params;
+  const lp = new Array<bigint>(n);
+  for (let i = 0; i < n; i++) lp[i] = Fp.mul(Fp.add(beta, pInput[i]), Fp.add(gamma, pTable[i]));
+  for (let i = 0; i < n; i++) lp[i] = Fp.inv(lp[i]);
+  for (let i = 0; i < n; i++)
+    lp[i] = Fp.mul(lp[i], Fp.mul(Fp.add(cin[i], beta), Fp.add(ctab[i], gamma)));
+  const z = [1n];
+  for (let i = 0; i < n - blindingFactors - 1; i++) z.push(Fp.mul(z[z.length - 1], lp[i]));
+  for (let i = 0; i < blindingFactors; i++) z.push(rng.nextScalar());
+  const blind = rng.nextScalar();
+  return { commitment: Vesta.add(Vesta.msm(z, gLagrange), Vesta.scalarMul(blind, w)), zPoly: z };
+}
+
+/**
+ * The five lookup constraint polynomials on the extended coset (halo2
+ * lookup::construct), given cosets of Z_lookup, A', S', and compressed input/table:
+ *   l0·(1-Z), l_last·(Z²-Z),
+ *   active·(Z(ωX)(A'+β)(S'+γ) - Z(X)(cin+β)(ctab+γ)),
+ *   l0·(A'-S'), active·(A'-S')(A'-A'(ω⁻¹X))   where active = 1-(l_last+l_blind).
+ */
+export function buildLookupExpressions(
+  c: {
+    z: bigint[];
+    ap: bigint[];
+    sp: bigint[];
+    cin: bigint[];
+    ctab: bigint[];
+    l0: bigint[];
+    lLast: bigint[];
+    lBlind: bigint[];
+  },
+  beta: bigint,
+  gamma: bigint,
+  k: number,
+  extendedK: number,
+): bigint[][] {
+  const extN = 1 << extendedK;
+  const rotMul = 1 << (extendedK - k);
+  const at = (a: bigint[], i: number, shift: number) => a[(((i + shift) % extN) + extN) % extN];
+  const active = (i: number) => Fp.sub(1n, Fp.add(c.lLast[i], c.lBlind[i]));
+  const mk = (f: (i: number) => bigint) => Array.from({ length: extN }, (_, i) => f(i));
+  return [
+    mk((i) => Fp.mul(Fp.sub(1n, c.z[i]), c.l0[i])),
+    mk((i) => Fp.mul(Fp.sub(Fp.square(c.z[i]), c.z[i]), c.lLast[i])),
+    mk((i) => {
+      const left = Fp.mul(
+        Fp.mul(at(c.z, i, rotMul), Fp.add(c.ap[i], beta)),
+        Fp.add(c.sp[i], gamma),
+      );
+      const right = Fp.mul(
+        Fp.mul(c.z[i], Fp.add(c.cin[i], beta)),
+        Fp.add(c.ctab[i], gamma),
+      );
+      return Fp.mul(Fp.sub(left, right), active(i));
+    }),
+    mk((i) => Fp.mul(Fp.sub(c.ap[i], c.sp[i]), c.l0[i])),
+    mk((i) => Fp.mul(Fp.mul(Fp.sub(c.ap[i], c.sp[i]), Fp.sub(c.ap[i], at(c.ap, i, -rotMul))), active(i))),
+  ];
+}

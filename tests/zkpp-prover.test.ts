@@ -17,6 +17,7 @@ import {
   buildIPA,
   buildMultiopen,
   permuteExpressionPair,
+  commitLookupProduct,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
@@ -484,5 +485,20 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     const spCommit = Vesta.add(Vesta.msm(pTable, G_LAGRANGE), Vesta.scalarMul(spBlind, W));
     expect(hex(Vesta.toBytes(apCommit))).toBe(lookup.ap_commit);
     expect(hex(Vesta.toBytes(spCommit))).toBe(lookup.sp_commit);
+  });
+
+  it('lookup: commit_product Z_lookup matches halo2', () => {
+    const cin = f16(lookup.cin);
+    const ctab = f16(lookup.ctab);
+    const ap = f16(lookup.ap);
+    const sp = f16(lookup.sp);
+    const beta = leHex('c772e4ea6b2cb41ac32909d61150629b7365b6d6c4e86bd703531ccbfa244424');
+    const gamma = leHex('3e166b0d82ecddeed5b97ea5915f1845dff2b884b4f31d2571e012be1fe0b038');
+    const rng = new CounterRng();
+    for (let i = 0; i < 21; i++) rng.nextScalar(); // advice 7 + permute 12 + A'/S' commits 2
+    const { commitment } = commitLookupProduct(cin, ctab, ap, sp, beta, gamma, PARAMS, rng);
+    expect(hex(Vesta.toBytes(commitment))).toBe(
+      '1aea09b2473ee27e9fa568cf7dce10912aad4b8fa188da76fd01ad6d7f1997bb',
+    );
   });
 });
