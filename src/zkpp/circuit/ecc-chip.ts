@@ -50,3 +50,36 @@ export function incompleteDoubleAndAdd(
   }
   return { rows, xa, ya, z };
 }
+
+import { Pallas, type Point } from '../curve.js';
+
+export interface CompleteRow {
+  z: bigint;
+  x: bigint;
+  y: bigint;
+}
+
+/**
+ * ECC variable-base mul complete-addition tail (halo2_gadgets mul/complete.rs):
+ * per low bit k, acc = [2]·acc + (k ? base : −base) using complete addition, with
+ * z = 2·z + k. Complete addition handles the exceptional/identity cases.
+ */
+export function completeAddition(
+  base: Point,
+  x0: bigint,
+  y0: bigint,
+  bits: number[],
+  z0: bigint,
+): { rows: CompleteRow[]; acc: Point; z: bigint } {
+  let acc: Point = { x: x0, y: y0 };
+  let z = z0;
+  const rows: CompleteRow[] = [];
+  for (const k of bits) {
+    z = Fp.add(Fp.mul(2n, z), BigInt(k));
+    const u = k ? base : Pallas.neg(base);
+    acc = Pallas.add(Pallas.double(acc), u);
+    const a = acc as { x: bigint; y: bigint };
+    rows.push({ z, x: a.x, y: a.y });
+  }
+  return { rows, acc, z };
+}

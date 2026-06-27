@@ -19,3 +19,16 @@ describe('ECC variable-base mul — incomplete double-and-add witness', () => {
     expect(got).toEqual(ecc.rows.map((r: string[]) => r.join(':')));
   });
 });
+
+import { completeAddition } from '../src/zkpp/circuit/ecc-chip.js';
+import eccc from './fixtures/ecc-complete.json';
+import gc from './fixtures/gadget-c.json';
+
+describe('ECC variable-base mul — complete-addition tail', () => {
+  it('acc = [2]acc + (k?base:-base) point sequence matches halo2_gadgets', () => {
+    const base = { x: le(gc.hpx), y: le(gc.hpy) };
+    const out = completeAddition(base, le(eccc.x0), le(eccc.y0), eccc.bits, 11n);
+    const got = out.rows.map((r) => [fe(r.z), fe(r.x), fe(r.y)].join(':'));
+    expect(got).toEqual(eccc.rows.map((r: string[]) => r.join(':')));
+  });
+});
