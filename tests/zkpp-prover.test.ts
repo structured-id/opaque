@@ -18,6 +18,7 @@ import {
   buildMultiopen,
   permuteExpressionPair,
   commitLookupProduct,
+  buildLookupExpressions,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
@@ -500,5 +501,42 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     expect(hex(Vesta.toBytes(commitment))).toBe(
       '1aea09b2473ee27e9fa568cf7dce10912aad4b8fa188da76fd01ad6d7f1997bb',
     );
+  });
+
+  it('lookup: folded H (gate + lookup expressions) matches halo2', () => {
+    const f64 = (h: string) => Array.from({ length: 64 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const cin = f16(lookup.cin);
+    const ctab = f16(lookup.ctab);
+    const beta = leHex(lookup.beta);
+    const gamma = leHex(lookup.gamma);
+    const Y = leHex(lookup.y);
+    const rng = new CounterRng();
+    for (let i = 0; i < 7; i++) rng.nextScalar(); // advice
+    const { pInput, pTable } = permuteExpressionPair(cin, ctab, 10, 5, rng); // permute (12)
+    rng.nextScalar(); // A' commit blind
+    rng.nextScalar(); // S' commit blind
+    const { zPoly } = commitLookupProduct(cin, ctab, pInput, pTable, beta, gamma, PARAMS, rng);
+    const toCoset6 = (lag: bigint[]) => coeffToExtended(lagrangeToCoeff(lag, 4), 6);
+    const exprs = buildLookupExpressions(
+      {
+        z: toCoset6(zPoly),
+        ap: toCoset6(pInput),
+        sp: toCoset6(pTable),
+        cin: toCoset6(cin),
+        ctab: toCoset6(ctab),
+        l0: f64(lookup.l0),
+        lLast: f64(lookup.llast),
+        lBlind: f64(lookup.lblind),
+      },
+      beta,
+      gamma,
+      4,
+      6,
+    );
+    // expressions = [gate(noop=0), ...5 lookup]; folded by Horner with y.
+    const all = [new Array<bigint>(64).fill(0n), ...exprs];
+    const H = new Array<bigint>(64).fill(0n);
+    for (const e of all) for (let i = 0; i < 64; i++) H[i] = Fp.add(Fp.mul(H[i], Y), e[i]);
+    expect(H.map(fe)).toEqual(f64(lookup.hfolded).map(fe));
   });
 });
