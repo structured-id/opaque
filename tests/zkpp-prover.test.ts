@@ -16,9 +16,11 @@ import {
   evalPolynomial,
   buildIPA,
   buildMultiopen,
+  permuteExpressionPair,
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
+import lookup from './fixtures/toy-lookup.json';
 import { omegaForSize } from '../src/zkpp/fft.js';
 import ipa from './fixtures/toy-ipa.json';
 import {
@@ -463,5 +465,24 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     const qpBlind = rng2.nextScalar();
     const qpCommit = Vesta.add(Vesta.msm(qPrime, G_COEFF), Vesta.scalarMul(qpBlind, W));
     expect(hex(Vesta.toBytes(qpCommit))).toBe(hex(tail.subarray(0, 32)));
+  });
+
+  it('lookup: permute A\'/S\' + commitments match halo2', () => {
+    const cin = f16(lookup.cin);
+    const ctab = f16(lookup.ctab);
+    const AP = f16(lookup.ap);
+    const SP = f16(lookup.sp);
+    // Lookup toy uses the same params (k=4), so g_lagrange/w match the mul toy.
+    const rng = new CounterRng();
+    for (let i = 0; i < 7; i++) rng.nextScalar(); // skip advice (1 col: 6 blinding rows + 1 blind)
+    const { pInput, pTable } = permuteExpressionPair(cin, ctab, 10, 5, rng);
+    expect(pInput.map(fe)).toEqual(AP.map(fe));
+    expect(pTable.map(fe)).toEqual(SP.map(fe));
+    const apBlind = rng.nextScalar();
+    const spBlind = rng.nextScalar();
+    const apCommit = Vesta.add(Vesta.msm(pInput, G_LAGRANGE), Vesta.scalarMul(apBlind, W));
+    const spCommit = Vesta.add(Vesta.msm(pTable, G_LAGRANGE), Vesta.scalarMul(spBlind, W));
+    expect(hex(Vesta.toBytes(apCommit))).toBe(lookup.ap_commit);
+    expect(hex(Vesta.toBytes(spCommit))).toBe(lookup.sp_commit);
   });
 });

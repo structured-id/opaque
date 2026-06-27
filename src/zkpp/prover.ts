@@ -392,3 +392,38 @@ export function buildMultiopen(
   for (const q of qPolys) pPoly = pPoly.map((v, i) => Fp.add(Fp.mul(v, x4), q[i]));
   return { qPrime: qPrime!, qEvals, pPoly, qPolys };
 }
+
+/**
+ * Lookup permute (halo2 permute_expression_pair): A' = sorted input; S' has the
+ * first row of each like-input-run equal to the input value, remaining rows filled
+ * with leftover table values (BTreeMap key order = canonical ascending). Then bf+1
+ * blinding rows each (RNG: input blinds then table blinds).
+ */
+export function permuteExpressionPair(
+  input: bigint[],
+  table: bigint[],
+  usableRows: number,
+  bf: number,
+  rng: CounterRng,
+): { pInput: bigint[]; pTable: bigint[] } {
+  const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
+  const pInput = input.slice(0, usableRows).sort(cmp);
+  const counts = new Map<bigint, number>();
+  for (let i = 0; i < usableRows; i++) counts.set(table[i], (counts.get(table[i]) ?? 0) + 1);
+  const pTable = new Array<bigint>(usableRows).fill(0n);
+  const repeated: number[] = [];
+  for (let row = 0; row < usableRows; row++) {
+    if (row === 0 || pInput[row] !== pInput[row - 1]) {
+      pTable[row] = pInput[row];
+      counts.set(pInput[row], counts.get(pInput[row])! - 1);
+    } else {
+      repeated.push(row);
+    }
+  }
+  for (const coeff of [...counts.keys()].sort(cmp)) {
+    for (let c = 0; c < counts.get(coeff)!; c++) pTable[repeated.pop()!] = coeff;
+  }
+  for (let i = 0; i < bf + 1; i++) pInput.push(rng.nextScalar());
+  for (let i = 0; i < bf + 1; i++) pTable.push(rng.nextScalar());
+  return { pInput, pTable };
+}
