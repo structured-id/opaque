@@ -14,7 +14,9 @@ import {
   DELTA,
   type ProvingParams,
 } from '../src/zkpp/prover.js';
+import { coeffToExtended, lagrangeToCoeff } from '../src/zkpp/domain.js';
 import perm from './fixtures/toy-perm.json';
+import toyH from './fixtures/toy-h.json';
 
 const bytes = (h: string) => new Uint8Array(h.match(/../g)!.map((x) => parseInt(x, 16)));
 const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -160,5 +162,15 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     for (const c of zCommits) t.commonPoint(c);
     t.commonPoint(vanishingCommit);
     expect(t.squeezeChallenge()).toBe(Y); // vanishing challenge
+  });
+
+  it('step 6a: advice extended coset = coeffToExtended(lagrangeToCoeff(advice))', () => {
+    const f32 = (h: string) =>
+      Array.from({ length: 32 }, (_, i) => leHex(h.slice(i * 64, i * 64 + 64)));
+    const { advice } = commitAdvice(PARAMS, [[3n, 15n], [5n]], new CounterRng());
+    const coset0 = coeffToExtended(lagrangeToCoeff(advice[0]!, 4), 5);
+    const coset1 = coeffToExtended(lagrangeToCoeff(advice[1]!, 4), 5);
+    expect(coset0.map(fe)).toEqual(f32(toyH.adv_coset_0).map(fe));
+    expect(coset1.map(fe)).toEqual(f32(toyH.adv_coset_1).map(fe));
   });
 });
