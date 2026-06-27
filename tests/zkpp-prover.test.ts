@@ -539,4 +539,35 @@ describe('TS halo2 prover (create_proof) — step by step vs halo2', () => {
     for (const e of all) for (let i = 0; i < 64; i++) H[i] = Fp.add(Fp.mul(H[i], Y), e[i]);
     expect(H.map(fe)).toEqual(f64(lookup.hfolded).map(fe));
   });
+
+  it('lookup: evals (product, A\', S\') match halo2', () => {
+    const cin = f16(lookup.cin);
+    const ctab = f16(lookup.ctab);
+    const beta = leHex(lookup.beta);
+    const gamma = leHex(lookup.gamma);
+    const X = leHex(lookup.x);
+    const rng = new CounterRng();
+    for (let i = 0; i < 7; i++) rng.nextScalar();
+    const { pInput, pTable } = permuteExpressionPair(cin, ctab, 10, 5, rng);
+    rng.nextScalar();
+    rng.nextScalar();
+    const { zPoly } = commitLookupProduct(cin, ctab, pInput, pTable, beta, gamma, PARAMS, rng);
+    const zc = lagrangeToCoeff(zPoly, 4);
+    const apc = lagrangeToCoeff(pInput, 4);
+    const spc = lagrangeToCoeff(pTable, 4);
+    const omega = omegaForSize(4);
+    const xw = Fp.mul(X, omega);
+    const xinv = Fp.mul(X, Fp.pow(omega, 15n));
+    const evals = [
+      evalPolynomial(zc, X),
+      evalPolynomial(zc, xw),
+      evalPolynomial(apc, X),
+      evalPolynomial(apc, xinv),
+      evalPolynomial(spc, X),
+    ];
+    const proof = bytes(lookup.proof);
+    for (let i = 0; i < 5; i++) {
+      expect(fe(evals[i])).toBe(hex(proof.subarray(384 + i * 32, 384 + i * 32 + 32)));
+    }
+  });
 });
