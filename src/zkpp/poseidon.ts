@@ -58,6 +58,53 @@ function permute(state: bigint[]): void {
   for (let r = 0; r < HALF_F; r++) full();
 }
 
+/** Pow5 chip witness cells: state at each round-row + the partial-round sboxes. */
+export interface Pow5Cells {
+  /** State [s0,s1,s2] per row: load + HALF_F + (R_P/2) partial-pairs + HALF_F. */
+  states: bigint[][];
+  /** First-round sbox r[0] of each partial-round pair (the partial_sbox column). */
+  partialSbox: bigint[];
+}
+
+/**
+ * Run the Poseidon permutation recording the halo2_gadgets Pow5 chip layout: the
+ * state after the load row, after each full round, and after each compressed
+ * partial-round PAIR, plus each pair's first-round sbox value.
+ */
+export function permuteWithCells(initial: bigint[]): Pow5Cells {
+  const state = initial.map((v) => Fp.mod(v));
+  const states: bigint[][] = [state.slice()];
+  const partialSbox: bigint[] = [];
+  let round = 0;
+  const full = () => {
+    for (let i = 0; i < T; i++) state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
+    for (let i = 0; i < T; i++) state[i] = sbox(state[i]);
+    applyMds(state);
+    round++;
+  };
+  const partial = () => {
+    for (let i = 0; i < T; i++) state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
+    state[0] = sbox(state[0]);
+    applyMds(state);
+    round++;
+  };
+  for (let r = 0; r < HALF_F; r++) {
+    full();
+    states.push(state.slice());
+  }
+  for (let r = 0; r < R_P / 2; r++) {
+    partialSbox.push(sbox(Fp.add(state[0], POSEIDON_RC[round][0])));
+    partial();
+    partial();
+    states.push(state.slice());
+  }
+  for (let r = 0; r < HALF_F; r++) {
+    full();
+    states.push(state.slice());
+  }
+  return { states, partialSbox };
+}
+
 /** ConstantLength<L> hash: capacity = L·2^64, single permutation, output lane 0. */
 function hashConstLen(inputs: bigint[]): bigint {
   const L = inputs.length;
