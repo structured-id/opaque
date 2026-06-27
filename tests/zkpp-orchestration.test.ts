@@ -206,3 +206,18 @@ describe('synthesize orchestration — gadget_d breach Poseidon chain (R57/R60/R
     }
   });
 });
+
+import zinputs from './fixtures/zkpp-inputs.json';
+
+describe('synthesize orchestration — Poseidon input cells (gadget_b/c/d fes)', () => {
+  it('gadget_b col17 = zeros, gadget_c col32 / gadget_d col38 = packed password fes', () => {
+    // gadget_b registration: all_fes = pack(p_old=0)+pack(salt=0) = zeros.
+    expect(zinputs.gb.every((h: string) => fe(0n) === h)).toBe(true);
+    // gadget_c/d input cells = bytes_to_field_elements(128-byte padded password).
+    const pwBuf = new Uint8Array(128);
+    pwBuf.set(new TextEncoder().encode('Str0ngP@ss'));
+    const fes = bytesToFieldElements(pwBuf);
+    expect(zinputs.gc.map((_: string, i: number) => fe(fes[i]))).toEqual(zinputs.gc);
+    expect(zinputs.gd.map((_: string, i: number) => fe(fes[i]))).toEqual(zinputs.gd);
+  });
+});
