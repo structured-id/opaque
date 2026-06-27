@@ -9,6 +9,7 @@
  * Top-level exports are the Pallas instance (binding etc.); `Pallas`/`Vesta` give both.
  */
 import { weierstrass } from '@noble/curves/abstract/weierstrass.js';
+import { pippenger } from '@noble/curves/abstract/curve.js';
 import { Field as NobleField } from '@noble/curves/abstract/modular.js';
 import { Field, FP_MODULUS, FQ_MODULUS } from './field.js';
 
@@ -61,9 +62,17 @@ function makeCurve(P: bigint, N: bigint, Gx: bigint, Gy: bigint): Curve {
     return fromNoble(toNoble(p).multiply(kk));
   };
   const msm = (scalars: bigint[], points: { x: bigint; y: bigint }[]): Point => {
-    let acc: Point = null;
-    for (let i = 0; i < scalars.length; i++) acc = add(acc, scalarMul(scalars[i], points[i]));
-    return acc;
+    const pts: ReturnType<typeof C.fromAffine>[] = [];
+    const scs: bigint[] = [];
+    for (let i = 0; i < scalars.length; i++) {
+      const s = ((scalars[i] % N) + N) % N;
+      if (s !== 0n) {
+        pts.push(toNoble(points[i]));
+        scs.push(s);
+      }
+    }
+    if (pts.length === 0) return null;
+    return fromNoble(pippenger(C, pts, scs));
   };
   const isOnCurve = (p: Point): boolean =>
     p === null ? true : F.square(p.y) === F.add(F.mul(F.square(p.x), p.x), B);
