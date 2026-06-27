@@ -41,3 +41,16 @@ describe('synthesize orchestration — region R26 (gadget B diff-accumulator)', 
     }
   });
 });
+
+import { permuteWithCells } from '../src/zkpp/poseidon.js';
+import pow5r5 from './fixtures/zkpp-pow5-r5.json';
+
+describe('synthesize orchestration — region R5 (Pow5 Poseidon permutation, first gadget_b hash H(0,0))', () => {
+  it('permuteWithCells([0,0,2<<64]) reproduces real circuit Pow5 cols 18-21 byte-exact', () => {
+    const cells = permuteWithCells([0n, 0n, 2n << 64n]);
+    expect(cells.states.map((s) => fe(s[0]))).toEqual(pow5r5.st0);
+    expect(cells.states.map((s) => fe(s[1]))).toEqual(pow5r5.st1);
+    expect(cells.states.map((s) => fe(s[2]))).toEqual(pow5r5.st2);
+    expect(cells.partialSbox.map((v) => fe(v))).toEqual(pow5r5.psb);
+  });
+});
