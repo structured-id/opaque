@@ -30,7 +30,7 @@ export async function getBackend(): Promise<OpaqueBackend> {
 
 async function initBackend(): Promise<OpaqueBackend> {
   // Pure-TypeScript OPAQUE PAKE backend (no WASM: the WASM acceleration path and
-  // the ZKPP method live in the separate AGPL-licensed @structured-id/zkpp package).
+  // the ZKPP method live in the separate AGPL-licensed @structured-id/opaque-zkpp package).
   const { jsBackend } = await import('./js.js');
   _backend = jsBackend;
   return _backend;
