@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 (2026-06-29)
+
+
+### Features
+
+* OPAQUE (RFC 9807) PAKE client with password-policy validation ([60d9a07](https://github.com/structured-id/opaque/commit/60d9a07654068dec561d641217cdf0ff02ba6948))
+
 ## [1.0.4](https://github.com/structured-id/opaque/compare/v1.0.3...v1.0.4) (2026-04-03)
 
 
