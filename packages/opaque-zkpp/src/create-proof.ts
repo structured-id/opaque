@@ -29,7 +29,7 @@ import {
   type MultiopenSet,
 } from "./prover.js";
 import { ProgressTracker, type ZkppProgress } from "./progress.js";
-import { parallelMap, hwConcurrency } from "./worker-pool.js";
+import { WorkerPool, hwConcurrency } from "./worker-pool.js";
 
 type Pt = { x: bigint; y: bigint };
 
@@ -196,6 +196,18 @@ export async function createProof(
   // (inline). Commits and cosets are pure (no RNG) and independent, so running them
   // on the pool is byte-identical to sequential — only faster.
   const poolSize = opts.workers ? (opts.maxWorkers ?? hwConcurrency()) : 1;
+  // Persistent pools: spawned + (for commits) SRS-initialised ONCE, then reused
+  // across every stage (the 3 coset maps + commits) so worker spawn / module load /
+  // SRS init is paid once, not per stage. Not usable (Node, single core) -> inline.
+  const cosetPool = new WorkerPool(
+    new URL("./coset-worker.js", import.meta.url),
+    poolSize,
+  );
+  const commitPool = new WorkerPool(
+    new URL("./commit-worker.js", import.meta.url),
+    poolSize,
+    { gL, w },
+  );
 
   const out: number[] = [];
   const pushPt = (p: Pt): void => {
@@ -220,19 +232,18 @@ export async function createProof(
   for (let c = 0; c < 53; c++)
     for (let r = N - 6; r < N; r++) advice[c][r] = rng.nextScalar();
   for (let c = 0; c < 53; c++) adviceBlinds.push(rng.nextScalar());
-  // Commit the 53 advice columns in parallel (pure MSMs), then absorb in order.
-  const adviceCommits = await parallelMap(
+  // Commit the 53 advice columns on the (SRS-initialised) MSM pool — tiny 1-point
+  // output, near-linear scaling — then absorb in order. Node: inline (byte-identical).
+  const adviceCommits = await commitPool.map(
     Array.from({ length: 53 }, (_, c) => c),
     (c) =>
       Vesta.add(
         Vesta.msm(advice[c], gL),
         Vesta.scalarMul(adviceBlinds[c], w),
       ) as Pt,
-    undefined,
-    {
-      maxWorkers: poolSize,
-      onTick: (d, n) => prog.report("commit-advice", d / n),
-    },
+    (c) => ({ poly: advice[c], blind: adviceBlinds[c] }),
+    (m) => m as Pt,
+    (d, n) => prog.report("commit-advice", d / n),
   );
   for (let c = 0; c < 53; c++) {
     pushPt(adviceCommits[c]);
@@ -353,19 +364,12 @@ export async function createProof(
   const toCos = (col: bigint[]): bigint[] =>
     coeffToExtended(lagrangeToCoeff(col, K), EXTK);
   // The bulk of the coset FFTs (advice 53 + fixed 55 + sigma 56) are independent
-  // and pure — run them on the pool. In the browser each FFT runs in a Web Worker
-  // (coset-worker.ts); in Node the pool falls back to inline (byte-identical).
-  const cosOpts = { maxWorkers: poolSize };
-  const cosetSpec =
-    opts.workers && typeof Worker !== "undefined"
-      ? {
-          url: new URL("./coset-worker.js", import.meta.url),
-          toMessage: (p: bigint[]): unknown => p,
-          fromMessage: (m: unknown): bigint[] => m as bigint[],
-        }
-      : undefined;
-  const adviceCos = await parallelMap(advice, toCos, cosetSpec, cosOpts);
-  const fixedCos = await parallelMap(fixed, toCos, cosetSpec, cosOpts);
+  // and pure — run them on the SAME persistent pool across all three batches (each
+  // FFT a Web Worker in the browser; inline in Node, byte-identical).
+  const cTo = (col: bigint[]): unknown => col;
+  const cFrom = (m: unknown): bigint[] => m as bigint[];
+  const adviceCos = await cosetPool.map(advice, toCos, cTo, cFrom);
+  const fixedCos = await cosetPool.map(fixed, toCos, cTo, cFrom);
   const instCos = instance.map(toCos);
   const cosCtx: EvalCtx = {
     advice: adviceCos,
@@ -374,7 +378,7 @@ export async function createProof(
     n: EXTN,
     rotScale: QPD,
   };
-  const sigCos = await parallelMap(sigmas, toCos, cosetSpec, cosOpts);
+  const sigCos = await cosetPool.map(sigmas, toCos, cTo, cFrom);
   const permColCos = permMap.map((m) =>
     m.ty === "Advice"
       ? adviceCos[m.col]
@@ -673,6 +677,8 @@ export async function createProof(
   }
   pushSc(c);
   pushSc(f);
+  cosetPool.terminate();
+  commitPool.terminate();
   prog.done();
   return Uint8Array.from(out);
 }
