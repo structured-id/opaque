@@ -25,6 +25,12 @@ export interface WorkerSpec<T, R> {
   toMessage: (item: T, index: number) => unknown;
   /** Parse a worker reply back into a result. */
   fromMessage: (msg: unknown) => R;
+  /**
+   * Optional one-time payload posted to each worker before any task (e.g. the SRS
+   * for MSM). The worker must treat its first message as this init and reply once
+   * (any value) to signal ready; subsequent messages are tasks.
+   */
+  initMessage?: unknown;
 }
 
 export interface ParallelOptions {
@@ -83,6 +89,20 @@ async function runPool<T, R>(
   let completed = 0;
   const workers = Array.from({ length: poolSize }, () => new Worker(spec.url, { type: 'module' }));
 
+  // Optional one-time init (e.g. SRS for MSM): post to each worker, await ready.
+  if (spec.initMessage !== undefined) {
+    await Promise.all(
+      workers.map(
+        (w) =>
+          new Promise<void>((res, rej) => {
+            w.onmessage = () => res();
+            w.onerror = (e) => rej(e);
+            w.postMessage(spec.initMessage);
+          }),
+      ),
+    );
+  }
+
   await new Promise<void>((resolve, reject) => {
     let active = workers.length;
     const dispatch = (w: Worker) => {
@@ -103,4 +123,92 @@ async function runPool<T, R>(
     for (const w of workers) dispatch(w);
   });
   return out;
+}
+
+/**
+ * Persistent Web Worker pool: spawns its workers (and runs the one-time init) ONCE,
+ * then serves many `map` batches without respawning or reloading the worker module.
+ * The prover runs several embarrassingly-parallel stages (3 coset maps + commits),
+ * so reusing one pool across them avoids paying worker spawn + module-load + SRS-init
+ * on every stage. `available()` is false (→ caller runs inline) when there is no
+ * `Worker` (Node) or only one usable core.
+ */
+export class WorkerPool {
+  private readonly workers: Worker[];
+  private readonly ready: Promise<void>;
+  private readonly usable: boolean;
+
+  constructor(url: URL, size: number, initMessage?: unknown) {
+    this.usable = workersAvailable() && size > 1;
+    if (!this.usable) {
+      this.workers = [];
+      this.ready = Promise.resolve();
+      return;
+    }
+    this.workers = Array.from({ length: size }, () => new Worker(url, { type: 'module' }));
+    this.ready =
+      initMessage === undefined
+        ? Promise.resolve()
+        : Promise.all(
+            this.workers.map(
+              (w) =>
+                new Promise<void>((res, rej) => {
+                  w.onmessage = () => res();
+                  w.onerror = (e) => rej(e);
+                  w.postMessage(initMessage);
+                }),
+            ),
+          ).then(() => undefined);
+  }
+
+  available(): boolean {
+    return this.usable;
+  }
+
+  /** Map `items` over the pooled workers (or `inline` if the pool is not usable). */
+  async map<T, R>(
+    items: T[],
+    inline: (item: T, index: number) => R,
+    toMessage: (item: T, index: number) => unknown,
+    fromMessage: (msg: unknown) => R,
+    onTick?: (done: number, total: number) => void,
+  ): Promise<R[]> {
+    const total = items.length;
+    if (!this.usable) {
+      const out: R[] = new Array(total);
+      for (let i = 0; i < total; i++) {
+        out[i] = inline(items[i], i);
+        onTick?.(i + 1, total);
+      }
+      return out;
+    }
+    await this.ready;
+    const pool = this.workers.slice(0, Math.min(this.workers.length, total));
+    const out: R[] = new Array(total);
+    let next = 0;
+    let completed = 0;
+    await new Promise<void>((resolve, reject) => {
+      let active = pool.length;
+      const dispatch = (w: Worker): void => {
+        if (next >= total) {
+          if (--active === 0) resolve();
+          return;
+        }
+        const idx = next++;
+        w.onmessage = (e: MessageEvent): void => {
+          out[idx] = fromMessage(e.data);
+          onTick?.(++completed, total);
+          dispatch(w);
+        };
+        w.onerror = (e): void => reject(e);
+        w.postMessage(toMessage(items[idx], idx));
+      };
+      for (const w of pool) dispatch(w);
+    });
+    return out;
+  }
+
+  terminate(): void {
+    for (const w of this.workers) w.terminate();
+  }
 }
