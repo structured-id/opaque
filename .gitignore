@@ -1,0 +1,16 @@
+node_modules/
+dist/
+!dist/opaque.*
+coverage/
+*.tsbuildinfo
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.env
+.env.*
+
+# Claude Code local config
+.claude
