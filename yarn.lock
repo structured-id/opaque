@@ -978,9 +978,35 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@structured-id/opaque@workspace:.":
+"@structured-id/opaque-workspace@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@structured-id/opaque@workspace:."
+  resolution: "@structured-id/opaque-workspace@workspace:."
+  languageName: unknown
+  linkType: soft
+
+"@structured-id/opaque-zkpp@workspace:packages/opaque-zkpp":
+  version: 0.0.0-use.local
+  resolution: "@structured-id/opaque-zkpp@workspace:packages/opaque-zkpp"
+  dependencies:
+    "@eslint/js": "npm:^10.0.1"
+    "@noble/curves": "npm:^2.2.0"
+    "@noble/hashes": "npm:^2.2.0"
+    "@types/node": "npm:^26.0.1"
+    "@typescript-eslint/eslint-plugin": "npm:^8.62.0"
+    "@typescript-eslint/parser": "npm:^8.62.0"
+    "@vitest/coverage-v8": "npm:^4.1.9"
+    eslint: "npm:^10.6.0"
+    prettier: "npm:^3.8.5"
+    tsup: "npm:^8.5.1"
+    tsx: "npm:^4.22.4"
+    typescript: "npm:^6.0.3"
+    vitest: "npm:^4.1.9"
+  languageName: unknown
+  linkType: soft
+
+"@structured-id/opaque@workspace:packages/opaque":
+  version: 0.0.0-use.local
+  resolution: "@structured-id/opaque@workspace:packages/opaque"
   dependencies:
     "@commitlint/config-conventional": "npm:^21.1.0"
     "@eslint/js": "npm:^10.0.1"
