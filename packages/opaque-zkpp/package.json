@@ -1,0 +1,78 @@
+{
+  "name": "@structured-id/opaque-zkpp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Zero-Knowledge Password Policy (ZKPP) prover: proves a password satisfies policy without revealing it. Patent-protected method; AGPL-3.0 with a separate commercial license available.",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "wasm",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "tsup && cp wasm/*.wasm wasm/*.js wasm/*.d.ts dist/ 2>/dev/null || true",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "zkpp",
+    "zero-knowledge",
+    "password-policy",
+    "halo2",
+    "snark",
+    "cryptography"
+  ],
+  "author": "StructuredID <oss@structured.id>",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/structured-id/opaque.git",
+    "directory": "packages/opaque-zkpp"
+  },
+  "bugs": {
+    "url": "https://github.com/structured-id/opaque/issues"
+  },
+  "homepage": "https://github.com/structured-id/opaque/tree/main/packages/opaque-zkpp#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.6.0",
+    "prettier": "^3.8.5",
+    "tsup": "^8.5.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "packageManager": "yarn@4.14.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0"
+  }
+}

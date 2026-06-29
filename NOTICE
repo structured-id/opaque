@@ -1,0 +1,19 @@
+This repository is a monorepo with PER-PACKAGE licensing. There is no
+repository-wide license — each package's own LICENSE file is authoritative.
+
+  packages/opaque        Apache-2.0
+                         @structured-id/opaque — RFC 9807 OPAQUE PAKE client
+                         with cryptographic password-policy validation.
+
+  packages/opaque-zkpp   AGPL-3.0-only (+ commercial license available)
+                         @structured-id/opaque-zkpp — Zero-Knowledge Password
+                         Policy prover (Halo2 over Pasta curves). Patent-protected.
+
+The Apache-2.0 grant of packages/opaque does NOT extend to packages/opaque-zkpp,
+and the AGPL-3.0 copyleft of packages/opaque-zkpp does NOT extend to
+packages/opaque. The two packages are licensed and distributed independently;
+each package directory carries its own LICENSE file, which is authoritative for
+every file within that directory.
+
+Copyright (c) Dmitry Prudnikov. All rights reserved where not granted by the
+applicable package license.

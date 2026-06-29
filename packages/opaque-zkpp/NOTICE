@@ -1,0 +1,21 @@
+@structured-id/zkpp
+Copyright (C) Dmitry Prudnikov
+
+This package implements the Zero-Knowledge Password Policy (ZKPP) method: a
+zero-knowledge proof that a password satisfies a policy without revealing the
+password. The method is patent-protected.
+
+LICENSE
+-------
+This software is distributed under the GNU Affero General Public License,
+version 3.0 only (AGPL-3.0-only). See the LICENSE file.
+
+PATENT / COMMERCIAL LICENSE
+---------------------------
+The ZKPP method is covered by one or more patents. Use under AGPL-3.0 includes
+the patent grant of AGPL-3.0 section 11, scoped to AGPL-compliant use. Use that
+is not compatible with AGPL-3.0 (for example, in closed-source or networked
+products without satisfying AGPL obligations) requires a separate commercial
+license, which also conveys the corresponding patent license.
+
+Contact: oss@structured.id
