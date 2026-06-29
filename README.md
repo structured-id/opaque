@@ -49,4 +49,4 @@ const { finalization, sessionKey, exportKey: loginExportKey } = await client.log
 
 Apache-2.0. The OPAQUE PAKE (RFC 9807) is an open standard; this client is
 permissively licensed. The Zero-Knowledge Password Policy (ZKPP) method is a
-separate, patent-protected package: `@structured-id/zkpp` (AGPL-3.0 + commercial).
+separate, patent-protected package: `@structured-id/opaque-zkpp` (AGPL-3.0 + commercial).
