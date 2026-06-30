@@ -21,7 +21,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsup && cp wasm/*.wasm wasm/*.js wasm/*.d.ts dist/ 2>/dev/null || true",
+    "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
