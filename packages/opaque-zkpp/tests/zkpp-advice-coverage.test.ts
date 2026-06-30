@@ -23,7 +23,6 @@ import { Pallas } from "../src/curve.js";
 import { G2 } from "../src/binding.js";
 import { CounterRng } from "../src/prover.js";
 
-const N = 2048;
 const fe = (v: bigint) =>
   [...Fp.toBytes(v)].map((x) => x.toString(16).padStart(2, "0")).join("");
 const CE: PolicyParams = {
