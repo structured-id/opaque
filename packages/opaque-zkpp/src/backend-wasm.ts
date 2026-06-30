@@ -6,6 +6,7 @@
  */
 import type { Kernel } from './capabilities.js';
 import type { ZkppProver, ProveOptions } from './loader.js';
+import type { ZkppStage } from './progress.js';
 
 interface WasmModule {
   default: (moduleOrPath?: unknown) => Promise<unknown>;
@@ -15,8 +16,19 @@ interface WasmModule {
     policyVersion: number,
     mode: string,
     prevCommitment: string | null,
+    onProgress?: (done: number, total: number) => void,
   ) => string;
 }
+
+// create_proof reports 6 phase boundaries (done = 1..6); map to ZkppStage for the bar.
+const WASM_PHASES: ZkppStage[] = [
+  'commit-advice',
+  'lookups',
+  'permutation',
+  'quotient',
+  'multiopen',
+  'ipa',
+];
 
 // CE default policy version (matches CE_DEFAULT_POLICY used by the pure-TS path).
 const CE_POLICY_VERSION = 1;
@@ -60,14 +72,27 @@ export function createWasmProver(kernel: Kernel): ZkppProver {
   return {
     kernel,
     async proveRegistration(password: string, opts: ProveOptions = {}): Promise<Uint8Array> {
-      // WASM proves in one call; report coarse start→done so the gauge moves.
-      // (Sector binding via `opts.context` is an OPAQUE/Okamoto-layer concern, not
-      // bound into the SNARK here — the pure-TS path likewise ignores context.)
-      opts.onProgress?.({ stage: 'witness', fraction: 0, label: 'Proving (WASM)' });
+      // Determinate progress: create_proof invokes the callback at each phase
+      // boundary. (Sector binding via `opts.context` is an OPAQUE/Okamoto-layer
+      // concern, not bound into the SNARK here — the pure-TS path likewise ignores it.)
+      const onProg = opts.onProgress;
+      onProg?.({ stage: 'witness', fraction: 0, label: 'Proving (WASM)' });
+      const phaseCb = onProg
+        ? (done: number, total: number): void => {
+            const stage = WASM_PHASES[Math.min(Math.max(done - 1, 0), WASM_PHASES.length - 1)];
+            onProg({ stage, fraction: done / total, label: `Proving (WASM) ${done}/${total}` });
+          }
+        : undefined;
       const mod = await loadWasm(simd, threaded);
-      const json = mod.generate_zkpp_proof(password, CE_POLICY_VERSION, 'registration', null);
+      const json = mod.generate_zkpp_proof(
+        password,
+        CE_POLICY_VERSION,
+        'registration',
+        null,
+        phaseCb,
+      );
       const { proof } = JSON.parse(json) as { proof: string };
-      opts.onProgress?.({ stage: 'ipa', fraction: 1, label: 'Done' });
+      onProg?.({ stage: 'ipa', fraction: 1, label: 'Done' });
       return base64ToBytes(proof);
     },
   };

@@ -5,14 +5,16 @@ import { startWorkers } from './snippets/wasm-bindgen-rayon-38edf6e439f6d70d/src
 /**
  * Generate ZKPP proof for password registration or change.
  *
- * Returns JSON: `{"proof": "base64", "instances": ["b64", ...]}`
+ * Returns JSON: `{"proof": "base64", "instances": ["b64", ...]}`. `on_progress`,
+ * if given, is called `(phasesDone, phasesTotal)` per prover phase for a UI bar.
  * @param {string} password
  * @param {number} policy_version
  * @param {string} mode
  * @param {string | null} [prev_commitment]
+ * @param {Function | null} [on_progress]
  * @returns {string}
  */
-export function generate_zkpp_proof(password, policy_version, mode, prev_commitment) {
+export function generate_zkpp_proof(password, policy_version, mode, prev_commitment, on_progress) {
     let deferred5_0;
     let deferred5_1;
     try {
@@ -22,7 +24,7 @@ export function generate_zkpp_proof(password, policy_version, mode, prev_commitm
         const len1 = WASM_VECTOR_LEN;
         var ptr2 = isLikeNone(prev_commitment) ? 0 : passStringToWasm0(prev_commitment, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len2 = WASM_VECTOR_LEN;
-        const ret = wasm.generate_zkpp_proof(ptr0, len0, policy_version, ptr1, len1, ptr2, len2);
+        const ret = wasm.generate_zkpp_proof(ptr0, len0, policy_version, ptr1, len1, ptr2, len2, isLikeNone(on_progress) ? 0 : addToExternrefTable0(on_progress));
         var ptr4 = ret[0];
         var len4 = ret[1];
         if (ret[3]) {
@@ -295,6 +297,10 @@ function __wbg_get_imports(memory) {
             const ret = arg0.call(arg1, arg2);
             return ret;
         }, arguments); },
+        __wbg_call_bb28efe6b2f55b86: function() { return handleError(function (arg0, arg1, arg2, arg3) {
+            const ret = arg0.call(arg1, arg2, arg3);
+            return ret;
+        }, arguments); },
         __wbg_crypto_38df2bab126b63dc: function(arg0) {
             const ret = arg0.crypto;
             return ret;
@@ -392,12 +398,17 @@ function __wbg_get_imports(memory) {
             const ret = arg0.versions;
             return ret;
         },
-        __wbindgen_cast_0000000000000001: function(arg0, arg1) {
+        __wbindgen_cast_0000000000000001: function(arg0) {
+            // Cast intrinsic for `F64 -> Externref`.
+            const ret = arg0;
+            return ret;
+        },
+        __wbindgen_cast_0000000000000002: function(arg0, arg1) {
             // Cast intrinsic for `Ref(Slice(U8)) -> NamedExternref("Uint8Array")`.
             const ret = getArrayU8FromWasm0(arg0, arg1);
             return ret;
         },
-        __wbindgen_cast_0000000000000002: function(arg0, arg1) {
+        __wbindgen_cast_0000000000000003: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return ret;

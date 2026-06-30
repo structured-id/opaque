@@ -4,9 +4,10 @@
 /**
  * Generate ZKPP proof for password registration or change.
  *
- * Returns JSON: `{"proof": "base64", "instances": ["b64", ...]}`
+ * Returns JSON: `{"proof": "base64", "instances": ["b64", ...]}`. `on_progress`,
+ * if given, is called `(phasesDone, phasesTotal)` per prover phase for a UI bar.
  */
-export function generate_zkpp_proof(password: string, policy_version: number, mode: string, prev_commitment?: string | null): string;
+export function generate_zkpp_proof(password: string, policy_version: number, mode: string, prev_commitment?: string | null, on_progress?: Function | null): string;
 
 /**
  * Generate a commit-and-prove bound registration proof. Returns JSON:
@@ -72,7 +73,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly prepare_breach_check: (a: number, b: number) => [number, number];
     readonly verify_breach_response: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly generate_zkpp_proof: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
+    readonly generate_zkpp_proof: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
     readonly generate_zkpp_proof_bound: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
     readonly get_policy: (a: number) => [number, number, number, number];
     readonly init_zkpp_keys: (a: number, b: number, c: number, d: number, e: number) => [number, number];
