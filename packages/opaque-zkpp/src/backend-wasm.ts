@@ -29,7 +29,13 @@ function loadWasm(simd: boolean, threaded: boolean): Promise<WasmModule> {
   let p = loaded.get(key);
   if (!p) {
     p = (async (): Promise<WasmModule> => {
-      const mod = (await import(simd ? './wasm/opaque-simd.js' : './wasm/opaque.js')) as WasmModule;
+      // wasm/ ships at the package root (sibling of src/ and dist/), so '../wasm/'
+      // resolves both at build (from src/) and at runtime (from dist/). These two
+      // paths are marked external in tsup.config.ts so esbuild leaves the wasm glue
+      // (and its rayon worker) untouched as a runtime import.
+      const mod = (await import(
+        simd ? '../wasm/opaque-simd.js' : '../wasm/opaque.js'
+      )) as WasmModule;
       await mod.default();
       if (threaded && typeof mod.initThreadPool === 'function') {
         await mod.initThreadPool(navigator.hardwareConcurrency ?? 4);
