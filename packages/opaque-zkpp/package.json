@@ -1,6 +1,6 @@
 {
   "name": "@structured-id/opaque-zkpp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Zero-Knowledge Password Policy (ZKPP) prover: proves a password satisfies policy without revealing it. Patent-protected method; AGPL-3.0 with a separate commercial license available.",
   "main": "dist/index.cjs",
