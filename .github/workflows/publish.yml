@@ -22,22 +22,31 @@ jobs:
           # NO registry-url — it creates .npmrc with NODE_AUTH_TOKEN which
           # overrides OIDC trusted publishing with an invalid GITHUB_TOKEN
       - run: yarn install --immutable
-      - run: yarn build
-      - run: yarn test
-      # Auth: npm trusted publishing via OIDC (id-token: write + environment: release)
-      # Configure at npmjs.com → Package Settings → Publishing Access → Trusted Publishers:
-      #   Organization: structured-id, Repository: opaque
+      # Monorepo: release-please tags releases per package as `<component>-v<version>`
+      # (e.g. opaque-v1.0.5, opaque-zkpp-v0.1.1). Resolve which package this release is.
+      - name: Resolve released package
+        id: pkg
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "dir=packages/${TAG%-v*}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG##*-v}" >> "$GITHUB_OUTPUT"
+      - name: Build released package
+        run: yarn workspace "$(node -p "require('./${{ steps.pkg.outputs.dir }}/package.json').name")" build
+      # Auth: npm trusted publishing via OIDC (id-token: write + environment: release).
+      # Configure per package at npmjs.com → Package Settings → Trusted Publishers:
+      #   Organization: structured-id, Repository: opaque,
       #   Workflow: publish.yml, Environment: release
       - name: Publish to npm
+        working-directory: ${{ steps.pkg.outputs.dir }}
         run: |
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          if [ "${PACKAGE_VERSION}" != "${TAG_VERSION}" ]; then
-            echo "Release tag version (${TAG_VERSION}) does not match package.json version (${PACKAGE_VERSION})."
+          NAME="$(node -p "require('./package.json').name")"
+          PV="$(node -p "require('./package.json').version")"
+          if [ "${PV}" != "${{ steps.pkg.outputs.version }}" ]; then
+            echo "Release tag version (${{ steps.pkg.outputs.version }}) != package.json (${PV})."
             exit 1
           fi
-          if npm view "@structured-id/opaque@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-            echo "Version ${PACKAGE_VERSION} already published to npm; skipping."
+          if npm view "${NAME}@${PV}" version >/dev/null 2>&1; then
+            echo "${NAME}@${PV} already published; skipping."
             exit 0
           fi
           npm publish --access public --provenance
