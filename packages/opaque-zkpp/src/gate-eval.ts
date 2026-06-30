@@ -96,7 +96,7 @@ export function compileAst(
         throw new Error("bad ast node");
     }
   };
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+   
   const fn = new Function("row", "c", "F", `return ${gen(node)}`) as (
     row: number,
     ctx: EvalCtx,
