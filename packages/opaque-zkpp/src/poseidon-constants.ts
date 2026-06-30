@@ -1,5 +1,5 @@
 // Auto-generated from sid-pake-core P128Pow5T3 (interop_vectors dump_poseidon). Do not edit by hand.
-/* eslint-disable */
+ 
 export const POSEIDON_RC: readonly (readonly bigint[])[] = [
   [0x360d7470611e473d353f628f76d110f34e71162f31003b7057538c2596426303n, 0x2bab94d7ae222d135dc3c6c5febfaa314908ac2f12ebe06fbdb74213bf63188bn, 0x150c93fef652fb1c2bf03e1a29aa871fef77e7d736766c5d0939d92753cc5dc8n],
   [0x3270661e68928b3a955d55db56dc57c103cc0a60141e894e14259dce537782b2n, 0x73f116f04122e25a0b7afe4e2057299b407c370f2b5a1ccce9fb9ffc345afb3n, 0x2a32ec5c4ee5b1837affd09c1f53f5fd55c9cd2061ae93ca8ebad76fc71554d8n],
