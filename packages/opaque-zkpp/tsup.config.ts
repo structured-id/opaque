@@ -8,7 +8,7 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   treeshake: true,
-  target: 'es2022',
+  target: 'es2024',
   // The compiled wasm glue (shipped in ../wasm/) is loaded at runtime via dynamic
   // import — keep it external so esbuild neither bundles it nor follows its
   // wasm-bindgen-rayon worker (which imports '../../..').
