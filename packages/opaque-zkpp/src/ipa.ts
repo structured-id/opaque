@@ -5,7 +5,7 @@
  * (both derived in-circuit-free via hash_to_curve("Halo2-Parameters"); shipped to
  * the no-WASM client). Byte-identical to halo2 `Params::commit`.
  */
-import { Vesta, type Point } from './curve.js';
+import { Vesta, type Point } from "./curve.js";
 
 export interface IpaParams {
   /** Coefficient-basis generators g[0..n). */
@@ -15,9 +15,13 @@ export interface IpaParams {
 }
 
 /** Pedersen/IPA commitment to a coefficient-form polynomial with blinding `r`. */
-export function ipaCommit(params: IpaParams, coeffs: bigint[], blind: bigint): Point {
+export function ipaCommit(
+  params: IpaParams,
+  coeffs: bigint[],
+  blind: bigint,
+): Point {
   if (coeffs.length > params.g.length) {
-    throw new Error('ipaCommit: more coefficients than generators');
+    throw new Error("ipaCommit: more coefficients than generators");
   }
   const base = Vesta.msm(coeffs, params.g.slice(0, coeffs.length));
   const blinded = Vesta.scalarMul(blind, params.w);

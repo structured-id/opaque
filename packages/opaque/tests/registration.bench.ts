@@ -19,7 +19,7 @@ const password = 'HrenVamSID12!';
 let backend: OpaqueBackend;
 beforeAll(async () => {
   backend = await getBackend();
-   
+
   console.log('[bench] backend =', getBackendName());
 });
 

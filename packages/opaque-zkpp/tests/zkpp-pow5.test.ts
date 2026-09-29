@@ -1,13 +1,14 @@
 // Pow5 Poseidon-chip witness layout: checkpoint states reproduce the hash output.
-import { describe, it, expect } from 'vitest';
-import { Fp } from '../src/field.js';
-import { permuteWithCells, poseidonHash2 } from '../src/poseidon.js';
+import { describe, it, expect } from "vitest";
+import { Fp } from "../src/field.js";
+import { permuteWithCells, poseidonHash2 } from "../src/poseidon.js";
 
-const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+const hex = (b: Uint8Array) =>
+  [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 const fe = (v: bigint) => hex(Fp.toBytes(v));
 
-describe('Pow5 Poseidon-chip witness layout', () => {
-  it('checkpoint states reproduce poseidonHash2 with correct Pow5 row structure', () => {
+describe("Pow5 Poseidon-chip witness layout", () => {
+  it("checkpoint states reproduce poseidonHash2 with correct Pow5 row structure", () => {
     const a = 2n;
     const b = 3n;
     const cells = permuteWithCells([a, b, 2n << 64n]);

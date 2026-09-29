@@ -1,19 +1,19 @@
 // k=11 TS prover cost benchmark: times the dominant halo2 IPA-prover operations
 // (53 advice-column MSM commits + extended FFTs + IPA G-folding) at the real
 // ZkppCircuit scale (n=2048, 53 advice columns), on the real advice values.
-import { describe, it, expect } from 'vitest';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { Vesta } from '../src/curve.js';
-import { coeffToExtended } from '../src/domain.js';
+import { describe, it, expect } from "vitest";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { Vesta } from "../src/curve.js";
+import { coeffToExtended } from "../src/domain.js";
 
 const N = 2048;
 const K = 11;
 
 function loadAdvice(): bigint[][] {
-  const path = '/tmp/sid_zkpp_advice.txt';
+  const path = "/tmp/sid_zkpp_advice.txt";
   const cols: bigint[][] = Array.from({ length: 53 }, () => Array(N).fill(0n));
   if (existsSync(path)) {
-    for (const l of readFileSync(path, 'utf8').split('\n')) {
+    for (const l of readFileSync(path, "utf8").split("\n")) {
       const m = l.match(/^A:(\d+):(\d+):(.+)$/);
       if (!m) continue;
       const h = m[3];
@@ -25,13 +25,14 @@ function loadAdvice(): bigint[][] {
   } else {
     // Deterministic fallback so the bench runs without the dump (same MSM cost).
     for (let c = 0; c < 53; c++)
-      for (let r = 0; r < N; r++) cols[c][r] = BigInt((c * 131 + r * 7 + 1) % 1000003);
+      for (let r = 0; r < N; r++)
+        cols[c][r] = BigInt((c * 131 + r * 7 + 1) % 1000003);
   }
   return cols;
 }
 
-describe('ZKPP TS prover cost benchmark (k=11, n=2048)', () => {
-  it('measures advice-commit MSMs + extended FFT + IPA at real scale', () => {
+describe("ZKPP TS prover cost benchmark (k=11, n=2048)", () => {
+  it("measures advice-commit MSMs + extended FFT + IPA at real scale", () => {
     const advice = loadAdvice();
     // SRS: 2048 distinct Vesta points via incremental addition (setup, not timed).
     const G = Vesta.GENERATOR;
@@ -87,7 +88,8 @@ describe('ZKPP TS prover cost benchmark (k=11, n=2048)', () => {
         y = a1[i % N],
         z = a2[i % N];
       let gate = 0n;
-      for (let g = 0; g < 51; g++) gate = (gate + ((x * y) % P) * z + z * x) % P;
+      for (let g = 0; g < 51; g++)
+        gate = (gate + ((x * y) % P) * z + z * x) % P;
       q = (q + gate) % P;
     }
     const tQuot = performance.now();
@@ -108,7 +110,7 @@ describe('ZKPP TS prover cost benchmark (k=11, n=2048)', () => {
       `  === full prover total:            ${totalMs.toFixed(0)} ms (${(totalMs / 1000).toFixed(1)} s)\n` +
       `  vs native Rust: 849 ms (${(totalMs / 849).toFixed(1)}x) | wasm128: 1840 ms (${(totalMs / 1840).toFixed(1)}x) | wasm: 2160 ms (${(totalMs / 2160).toFixed(1)}x)\n` +
       `  (sink ${fftSink !== 0n}/${ipaSink !== null}/${acc !== 0n}/${q !== 0n})\n`;
-    writeFileSync('/tmp/sid_bench.txt', report);
+    writeFileSync("/tmp/sid_bench.txt", report);
     expect(totalMs).toBeGreaterThan(0);
   }, 600000);
 });

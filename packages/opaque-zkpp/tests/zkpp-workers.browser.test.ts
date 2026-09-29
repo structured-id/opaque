@@ -4,21 +4,27 @@
 // and the pool must actually parallelize (speedup > 1 on a multi-core machine).
 // Node cannot exercise this (no `Worker` global → inline fallback), so it lives
 // in a browser-mode test.
-import { describe, it, expect } from 'vitest';
-import { coeffToExtended, lagrangeToCoeff } from '../src/domain.js';
-import { Vesta } from '../src/curve.js';
-import { parallelMap, hwConcurrency, workersAvailable, WorkerPool } from '../src/worker-pool.js';
+import { describe, it, expect } from "vitest";
+import { coeffToExtended, lagrangeToCoeff } from "../src/domain.js";
+import { Vesta } from "../src/curve.js";
+import {
+  parallelMap,
+  hwConcurrency,
+  workersAvailable,
+  WorkerPool,
+} from "../src/worker-pool.js";
 
 type Pt = { x: bigint; y: bigint };
 
 const K = 11;
 const EXTK = 14;
 const N = 2048;
-const toCos = (col: bigint[]): bigint[] => coeffToExtended(lagrangeToCoeff(col, K), EXTK);
+const toCos = (col: bigint[]): bigint[] =>
+  coeffToExtended(lagrangeToCoeff(col, K), EXTK);
 
 // Same worker module + message shape the prover uses for cosets.
 const cosetSpec = {
-  url: new URL('../src/coset-worker.ts', import.meta.url),
+  url: new URL("../src/coset-worker.ts", import.meta.url),
   toMessage: (p: bigint[]): unknown => p,
   fromMessage: (m: unknown): bigint[] => m as bigint[],
 };
@@ -26,10 +32,12 @@ const cosetSpec = {
 // Deterministic synthetic advice columns (we test the FFT pipeline + worker
 // transport, not a specific witness).
 const makeCol = (c: number): bigint[] =>
-  Array.from({ length: N }, (_, i) => BigInt(((i * 2654435761 + c * 40503) >>> 0) + 1));
+  Array.from({ length: N }, (_, i) =>
+    BigInt(((i * 2654435761 + c * 40503) >>> 0) + 1),
+  );
 
-describe('coset FFT Web Worker parallelism (real Chromium)', () => {
-  it('worker pool matches inline byte-exact and parallelizes', async () => {
+describe("coset FFT Web Worker parallelism (real Chromium)", () => {
+  it("worker pool matches inline byte-exact and parallelizes", async () => {
     expect(workersAvailable()).toBe(true); // browser exposes Worker
     const cores = hwConcurrency();
     const cols = Array.from({ length: 32 }, (_, c) => makeCol(c));
@@ -39,7 +47,9 @@ describe('coset FFT Web Worker parallelism (real Chromium)', () => {
     const tInline = performance.now() - t;
 
     t = performance.now();
-    const par = await parallelMap(cols, toCos, cosetSpec, { maxWorkers: cores });
+    const par = await parallelMap(cols, toCos, cosetSpec, {
+      maxWorkers: cores,
+    });
     const tPar = performance.now() - t;
 
     // byte-exact: every parallel coset equals the inline one
@@ -67,8 +77,8 @@ describe('coset FFT Web Worker parallelism (real Chromium)', () => {
   }, 120000);
 });
 
-describe('commit MSM Web Worker parallelism (real Chromium)', () => {
-  it('worker pool (SRS init) matches inline byte-exact and parallelizes', async () => {
+describe("commit MSM Web Worker parallelism (real Chromium)", () => {
+  it("worker pool (SRS init) matches inline byte-exact and parallelizes", async () => {
     const cores = hwConcurrency();
     // Synthetic SRS (incremental basis) + blinding generator.
     const G = Vesta.GENERATOR as Pt;
@@ -78,7 +88,9 @@ describe('commit MSM Web Worker parallelism (real Chromium)', () => {
     const w = Vesta.double(G) as Pt;
     const tasks = 24;
     const polys = Array.from({ length: tasks }, (_, c) =>
-      Array.from({ length: SRS }, (_, i) => BigInt(((i * 2654435761 + c * 40503) >>> 0) + 1)),
+      Array.from({ length: SRS }, (_, i) =>
+        BigInt(((i * 2654435761 + c * 40503) >>> 0) + 1),
+      ),
     );
     const blinds = Array.from({ length: tasks }, (_, c) => BigInt(c + 7));
     const commit = (c: number): Pt =>
@@ -89,7 +101,7 @@ describe('commit MSM Web Worker parallelism (real Chromium)', () => {
     const tInline = performance.now() - t;
 
     const spec = {
-      url: new URL('../src/commit-worker.ts', import.meta.url),
+      url: new URL("../src/commit-worker.ts", import.meta.url),
       initMessage: { gL, w },
       toMessage: (c: number): unknown => ({ poly: polys[c], blind: blinds[c] }),
       fromMessage: (m: unknown): Pt => m as Pt,
@@ -116,18 +128,23 @@ describe('commit MSM Web Worker parallelism (real Chromium)', () => {
   }, 120000);
 });
 
-describe('persistent pool reuse vs respawn (real Chromium)', () => {
-  it('one pool reused across 3 batches is no slower than respawning per batch', async () => {
+describe("persistent pool reuse vs respawn (real Chromium)", () => {
+  it("one pool reused across 3 batches is no slower than respawning per batch", async () => {
     const cores = hwConcurrency();
     const cols = Array.from({ length: 16 }, (_, c) => makeCol(c));
-    const url = new URL('../src/coset-worker.ts', import.meta.url);
+    const url = new URL("../src/coset-worker.ts", import.meta.url);
     const toMsg = (p: bigint[]): unknown => p;
     const fromMsg = (m: unknown): bigint[] => m as bigint[];
 
     // respawn: 3 separate parallelMap calls (workers spawned + terminated each time)
     let t = performance.now();
     for (let s = 0; s < 3; s++)
-      await parallelMap(cols, toCos, { url, toMessage: toMsg, fromMessage: fromMsg }, { maxWorkers: cores });
+      await parallelMap(
+        cols,
+        toCos,
+        { url, toMessage: toMsg, fromMessage: fromMsg },
+        { maxWorkers: cores },
+      );
     const tRespawn = performance.now() - t;
 
     // persistent: one pool, three batches (spawn paid once)

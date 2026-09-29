@@ -69,9 +69,12 @@ export function validatePasswordClientSide(password: string, policy: PolicyParam
   let symbol = 0;
   for (const ch of password) {
     const cp = ch.codePointAt(0)!;
-    if (cp >= 0x41 && cp <= 0x5a) upper++; // A–Z
-    else if (cp >= 0x61 && cp <= 0x7a) lower++; // a–z
-    else if (cp >= 0x30 && cp <= 0x39) digit++; // 0–9
+    if (cp >= 0x41 && cp <= 0x5a)
+      upper++; // A–Z
+    else if (cp >= 0x61 && cp <= 0x7a)
+      lower++; // a–z
+    else if (cp >= 0x30 && cp <= 0x39)
+      digit++; // 0–9
     else if (!isAsciiWhitespace(cp)) symbol++; // everything else (non-whitespace)
   }
 
