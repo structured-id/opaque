@@ -19,7 +19,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.RELEASER_APP_ID }}
+          client-id: ${{ vars.RELEASER_CLIENT_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
 
       - uses: googleapis/release-please-action@v5

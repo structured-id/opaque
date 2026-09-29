@@ -28,7 +28,7 @@ jobs:
         if: steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.RELEASER_APP_ID }}
+          client-id: ${{ vars.RELEASER_CLIENT_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
 
       - name: Approve and enable auto-merge for minor/patch updates
