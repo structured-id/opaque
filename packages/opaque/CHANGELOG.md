@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.5](https://github.com/structured-id/opaque/compare/opaque-v1.0.4...opaque-v1.0.5) (2026-09-29)
+
+
+### Bug Fixes
+
+* **deps:** update all dependencies ([#90](https://github.com/structured-id/opaque/issues/90)) ([21ad8a2](https://github.com/structured-id/opaque/commit/21ad8a2e017b9fd2c1710acac7b5dfa74aa3e885))
+* **opaque:** OPAQUE ceremonies run on the TypeScript backend ([b29c3c2](https://github.com/structured-id/opaque/commit/b29c3c2e7afc91c7b2fb69f9068bfc0f0259880f))
+
 ## [1.0.4](https://github.com/structured-id/opaque/compare/v1.0.3...v1.0.4) (2026-04-03)
 
 
