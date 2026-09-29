@@ -9,13 +9,16 @@
 
 /** True only if the runtime exposes the Web Worker constructor. */
 export function workersAvailable(): boolean {
-  return typeof Worker !== 'undefined';
+  return typeof Worker !== "undefined";
 }
 
 /** Usable hardware concurrency (defaults to 1 when unknown → forces fallback). */
 export function hwConcurrency(): number {
-  const n = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : undefined;
-  return typeof n === 'number' && n > 0 ? n : 1;
+  const n =
+    typeof navigator !== "undefined"
+      ? navigator.hardwareConcurrency
+      : undefined;
+  return typeof n === "number" && n > 0 ? n : 1;
 }
 
 export interface WorkerSpec<T, R> {
@@ -59,7 +62,7 @@ export async function parallelMap<T, R>(
       out[i] = inline(items[i], i);
       opts.onTick?.(i + 1, total);
       // Yield so a UI gauge can paint between heavy items.
-      if (typeof queueMicrotask === 'function') await Promise.resolve();
+      if (typeof queueMicrotask === "function") await Promise.resolve();
     }
     return out;
   }
@@ -87,7 +90,10 @@ async function runPool<T, R>(
   const out: R[] = new Array(total);
   let next = 0;
   let completed = 0;
-  const workers = Array.from({ length: poolSize }, () => new Worker(spec.url, { type: 'module' }));
+  const workers = Array.from(
+    { length: poolSize },
+    () => new Worker(spec.url, { type: "module" }),
+  );
 
   // Optional one-time init (e.g. SRS for MSM): post to each worker, await ready.
   if (spec.initMessage !== undefined) {
@@ -145,7 +151,10 @@ export class WorkerPool {
       this.ready = Promise.resolve();
       return;
     }
-    this.workers = Array.from({ length: size }, () => new Worker(url, { type: 'module' }));
+    this.workers = Array.from(
+      { length: size },
+      () => new Worker(url, { type: "module" }),
+    );
     this.ready =
       initMessage === undefined
         ? Promise.resolve()

@@ -4,7 +4,7 @@
  * Web Workers are unavailable, worker-pool.ts runs `processColumn` inline instead.
  */
 /// <reference lib="webworker" />
-import { processColumn, type ColumnTask } from './zkpp-worker-kernel.js';
+import { processColumn, type ColumnTask } from "./zkpp-worker-kernel.js";
 
 declare const self: DedicatedWorkerGlobalScope;
 

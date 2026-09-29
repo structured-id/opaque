@@ -8,10 +8,10 @@
  * The binding then uses M = blind·H_p and Com = H_p + r·G2, so H_p MUST match the
  * Rust point exactly (including the sqrt root convention).
  */
-import { Field as NobleField } from '@noble/curves/abstract/modular.js';
-import { Fp, FP_MODULUS } from './field.js';
-import { bytesToFieldElements, hashChain } from './poseidon.js';
-import type { Point } from './curve.js';
+import { Field as NobleField } from "@noble/curves/abstract/modular.js";
+import { Fp, FP_MODULUS } from "./field.js";
+import { bytesToFieldElements, hashChain } from "./poseidon.js";
+import type { Point } from "./curve.js";
 
 const NFp = NobleField(FP_MODULUS);
 const B = 5n;
@@ -38,5 +38,5 @@ export function hashToCurveOutside(password: Uint8Array): HashToCurveResult {
       return { point: { x, y }, u, offset: i };
     }
   }
-  throw new Error('hashToCurve: no valid point in 256 tries');
+  throw new Error("hashToCurve: no valid point in 256 tries");
 }

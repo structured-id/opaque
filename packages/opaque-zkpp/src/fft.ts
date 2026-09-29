@@ -7,20 +7,21 @@
  * Fp is 2-adic with S = 32, so domains up to 2^32 have a primitive root of unity
  * `omega = ROOT_OF_UNITY^(2^(S − log_n))`.
  */
-import { Fp } from './field.js';
+import { Fp } from "./field.js";
 
 /** Pasta Fp 2-adicity. */
 export const FP_S = 32;
 
 const leHex = (h: string): bigint => {
   let v = 0n;
-  for (let i = h.length - 2; i >= 0; i -= 2) v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
+  for (let i = h.length - 2; i >= 0; i -= 2)
+    v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
   return v;
 };
 
 /** 2^S-th primitive root of unity in Fp (pasta_curves Fp::ROOT_OF_UNITY). */
 export const FP_ROOT_OF_UNITY = leHex(
-  '2fa37ed8ab6fadbd8475bbb7f22b32ea1af8610583202136daeb30acde74ce2b',
+  "2fa37ed8ab6fadbd8475bbb7f22b32ea1af8610583202136daeb30acde74ce2b",
 );
 
 /** Primitive 2^logN-th root of unity for a domain of size 2^logN. */

@@ -5,16 +5,17 @@
  *   advice commit → theta → lookups → beta/gamma → permutation → y → vanishing →
  *   x → evaluations → multiopen → IPA opening.
  */
-import { Fp } from './field.js';
-import { Vesta, type Point } from './curve.js';
-import { omegaForSize } from './fft.js';
-import { ZETA } from './domain.js';
+import { Fp } from "./field.js";
+import { Vesta, type Point } from "./curve.js";
+import { omegaForSize } from "./fft.js";
+import { ZETA } from "./domain.js";
 
 /** Fp::DELTA — the permutation argument's coset separator (column j uses δ^j). */
 export const DELTA = (() => {
-  const h = 'a29b7bdd20cd6c6a3656ee3ef1f3e4f59d04a512715b45bd6cab06000f7d750a';
+  const h = "a29b7bdd20cd6c6a3656ee3ef1f3e4f59d04a512715b45bd6cab06000f7d750a";
   let v = 0n;
-  for (let i = h.length - 2; i >= 0; i -= 2) v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
+  for (let i = h.length - 2; i >= 0; i -= 2)
+    v = (v << 8n) | BigInt(parseInt(h.slice(i, i + 2), 16));
   return v;
 })();
 
@@ -98,12 +99,17 @@ export function permutationZ(
   const n = 1 << k;
   const omega = omegaForSize(k);
   // Denominator col[i] + β·σ[i] + γ, then invert.
-  const modified = col.map((v, i) => Fp.add(Fp.add(v, Fp.mul(beta, sigma[i])), gamma));
+  const modified = col.map((v, i) =>
+    Fp.add(Fp.add(v, Fp.mul(beta, sigma[i])), gamma),
+  );
   for (let i = 0; i < n; i++) modified[i] = Fp.inv(modified[i]);
   // Multiply by numerator col[i] + δ^j·ωⁱ·β + γ.
   let dw = deltaPow;
   for (let i = 0; i < n; i++) {
-    modified[i] = Fp.mul(modified[i], Fp.add(Fp.add(Fp.mul(dw, beta), gamma), col[i]));
+    modified[i] = Fp.mul(
+      modified[i],
+      Fp.add(Fp.add(Fp.mul(dw, beta), gamma), col[i]),
+    );
     dw = Fp.mul(dw, omega);
   }
   // Grand product.
@@ -131,7 +137,9 @@ export function commitPermutationZ(
     const zc = z.slice();
     for (let r = n - blindingFactors; r < n; r++) zc[r] = rng.nextScalar();
     const blind = rng.nextScalar();
-    commitments.push(Vesta.add(Vesta.msm(zc, gLagrange), Vesta.scalarMul(blind, w)));
+    commitments.push(
+      Vesta.add(Vesta.msm(zc, gLagrange), Vesta.scalarMul(blind, w)),
+    );
     blindedZ.push(zc);
   }
   return { commitments, blindedZ };
@@ -159,7 +167,8 @@ export function commitVanishingRandom(
 /** Evaluate a coefficient polynomial at a point (Horner), halo2 eval_polynomial. */
 export function evalPolynomial(coeff: bigint[], point: bigint): bigint {
   let acc = 0n;
-  for (let i = coeff.length - 1; i >= 0; i--) acc = Fp.add(Fp.mul(acc, point), coeff[i]);
+  for (let i = coeff.length - 1; i >= 0; i--)
+    acc = Fp.add(Fp.mul(acc, point), coeff[i]);
   return acc;
 }
 
@@ -216,7 +225,8 @@ export function buildFoldedH(
   const rotMul = 1 << (extendedK - k);
   const rotNext = rotMul; // Rotation::next() = +1 row
   const rotLast = -(blindingFactors + 1) * rotMul; // Rotation(-(bf+1))
-  const at = (a: bigint[], i: number, shift: number) => a[(((i + shift) % extN) + extN) % extN];
+  const at = (a: bigint[], i: number, shift: number) =>
+    a[(((i + shift) % extN) + extN) % extN];
   // X polynomial on the ζ-coset: X[i] = ζ·ω_extⁱ.
   const X: bigint[] = [];
   let wv = ZETA;
@@ -226,17 +236,29 @@ export function buildFoldedH(
   }
   const cols = [c.adv0, c.adv1, c.inst];
   const exprs: bigint[][] = [];
-  const mk = (f: (i: number) => bigint) => Array.from({ length: extN }, (_, i) => f(i));
+  const mk = (f: (i: number) => bigint) =>
+    Array.from({ length: extN }, (_, i) => f(i));
 
   // Gate: selector·(adv0·adv1 - adv0@next).
-  exprs.push(mk((i) => Fp.mul(c.sel[i], Fp.sub(Fp.mul(c.adv0[i], c.adv1[i]), at(c.adv0, i, rotNext)))));
+  exprs.push(
+    mk((i) =>
+      Fp.mul(
+        c.sel[i],
+        Fp.sub(Fp.mul(c.adv0[i], c.adv1[i]), at(c.adv0, i, rotNext)),
+      ),
+    ),
+  );
   // Permutation, first set: (1 - Z_0)·l0.
   exprs.push(mk((i) => Fp.mul(Fp.sub(1n, c.z[0][i]), c.l0[i])));
   // Permutation, last set: (Z_last² - Z_last)·l_last.
-  exprs.push(mk((i) => Fp.mul(Fp.sub(Fp.square(c.z[2][i]), c.z[2][i]), c.lLast[i])));
+  exprs.push(
+    mk((i) => Fp.mul(Fp.sub(Fp.square(c.z[2][i]), c.z[2][i]), c.lLast[i])),
+  );
   // Permutation, inter-set: (Z_i - Z_{i-1}@last_rotation)·l0.
   for (let s = 1; s < 3; s++) {
-    exprs.push(mk((i) => Fp.mul(Fp.sub(c.z[s][i], at(c.z[s - 1], i, rotLast)), c.l0[i])));
+    exprs.push(
+      mk((i) => Fp.mul(Fp.sub(c.z[s][i], at(c.z[s - 1], i, rotLast)), c.l0[i])),
+    );
   }
   // Permutation, main identity per set: (left - right)·(1 - (l_last + l_blind)).
   for (let s = 0; s < 3; s++) {
@@ -245,15 +267,25 @@ export function buildFoldedH(
     const cd0 = Fp.mul(beta, Fp.pow(DELTA, BigInt(s)));
     exprs.push(
       mk((i) => {
-        const left = Fp.mul(at(c.z[s], i, rotNext), Fp.add(Fp.add(col[i], Fp.mul(beta, sig[i])), gamma));
-        const right = Fp.mul(c.z[s][i], Fp.add(Fp.add(col[i], Fp.mul(cd0, X[i])), gamma));
-        return Fp.mul(Fp.sub(left, right), Fp.sub(1n, Fp.add(c.lLast[i], c.lBlind[i])));
+        const left = Fp.mul(
+          at(c.z[s], i, rotNext),
+          Fp.add(Fp.add(col[i], Fp.mul(beta, sig[i])), gamma),
+        );
+        const right = Fp.mul(
+          c.z[s][i],
+          Fp.add(Fp.add(col[i], Fp.mul(cd0, X[i])), gamma),
+        );
+        return Fp.mul(
+          Fp.sub(left, right),
+          Fp.sub(1n, Fp.add(c.lLast[i], c.lBlind[i])),
+        );
       }),
     );
   }
   // Fold by Horner: acc = acc·y + e (first expression highest power).
   const H = new Array<bigint>(extN).fill(0n);
-  for (const e of exprs) for (let i = 0; i < extN; i++) H[i] = Fp.add(Fp.mul(H[i], y), e[i]);
+  for (const e of exprs)
+    for (let i = 0; i < extN; i++) H[i] = Fp.add(Fp.mul(H[i], y), e[i]);
   return H;
 }
 
@@ -333,7 +365,8 @@ export function buildIPA(
     p = p.slice(0, half);
     b = b.slice(0, half);
     const ng: Point[] = [];
-    for (let i = 0; i < half; i++) ng.push(Vesta.add(gp[i], Vesta.scalarMul(uj, gp[i + half])));
+    for (let i = 0; i < half; i++)
+      ng.push(Vesta.add(gp[i], Vesta.scalarMul(uj, gp[i + half])));
     gp = ng as { x: bigint; y: bigint }[];
     f = Fp.add(f, Fp.add(Fp.mul(lRand, ujInv), Fp.mul(rRand, uj)));
   }
@@ -374,22 +407,28 @@ export function buildMultiopen(
   x4: bigint,
   n: number,
 ): { qPrime: bigint[]; qEvals: bigint[]; pPoly: bigint[]; qPolys: bigint[][] } {
-  const qPolys = sets.map((s) =>
-    s.polys.reduce<bigint[] | null>(
-      (q, p) => (q === null ? p.slice() : q.map((v, i) => Fp.add(Fp.mul(v, x1), p[i]))),
-      null,
-    )!,
+  const qPolys = sets.map(
+    (s) =>
+      s.polys.reduce<bigint[] | null>(
+        (q, p) =>
+          q === null ? p.slice() : q.map((v, i) => Fp.add(Fp.mul(v, x1), p[i])),
+        null,
+      )!,
   );
   let qPrime: bigint[] | null = null;
   sets.forEach((s, si) => {
     let poly = qPolys[si].slice();
     for (const point of s.points) poly = kateDivision(poly, point);
     while (poly.length < n) poly.push(0n);
-    qPrime = qPrime === null ? poly : qPrime.map((v, i) => Fp.add(Fp.mul(v, x2), poly[i]));
+    qPrime =
+      qPrime === null
+        ? poly
+        : qPrime.map((v, i) => Fp.add(Fp.mul(v, x2), poly[i]));
   });
   const qEvals = qPolys.map((q) => evalPolynomial(q, x3));
   let pPoly = qPrime!.slice();
-  for (const q of qPolys) pPoly = pPoly.map((v, i) => Fp.add(Fp.mul(v, x4), q[i]));
+  for (const q of qPolys)
+    pPoly = pPoly.map((v, i) => Fp.add(Fp.mul(v, x4), q[i]));
   return { qPrime: qPrime!, qEvals, pPoly, qPolys };
 }
 
@@ -409,7 +448,8 @@ export function permuteExpressionPair(
   const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
   const pInput = input.slice(0, usableRows).sort(cmp);
   const counts = new Map<bigint, number>();
-  for (let i = 0; i < usableRows; i++) counts.set(table[i], (counts.get(table[i]) ?? 0) + 1);
+  for (let i = 0; i < usableRows; i++)
+    counts.set(table[i], (counts.get(table[i]) ?? 0) + 1);
   const pTable = new Array<bigint>(usableRows).fill(0n);
   const repeated: number[] = [];
   for (let row = 0; row < usableRows; row++) {
@@ -421,7 +461,8 @@ export function permuteExpressionPair(
     }
   }
   for (const coeff of [...counts.keys()].sort(cmp)) {
-    for (let c = 0; c < counts.get(coeff)!; c++) pTable[repeated.pop()!] = coeff;
+    for (let c = 0; c < counts.get(coeff)!; c++)
+      pTable[repeated.pop()!] = coeff;
   }
   for (let i = 0; i < bf + 1; i++) pInput.push(rng.nextScalar());
   for (let i = 0; i < bf + 1; i++) pTable.push(rng.nextScalar());
@@ -447,15 +488,20 @@ export function commitLookupProduct(
 ): { commitment: Point; zPoly: bigint[] } {
   const { n, blindingFactors, gLagrange, w } = params;
   const lp = new Array<bigint>(n);
-  for (let i = 0; i < n; i++) lp[i] = Fp.mul(Fp.add(beta, pInput[i]), Fp.add(gamma, pTable[i]));
+  for (let i = 0; i < n; i++)
+    lp[i] = Fp.mul(Fp.add(beta, pInput[i]), Fp.add(gamma, pTable[i]));
   for (let i = 0; i < n; i++) lp[i] = Fp.inv(lp[i]);
   for (let i = 0; i < n; i++)
     lp[i] = Fp.mul(lp[i], Fp.mul(Fp.add(cin[i], beta), Fp.add(ctab[i], gamma)));
   const z = [1n];
-  for (let i = 0; i < n - blindingFactors - 1; i++) z.push(Fp.mul(z[z.length - 1], lp[i]));
+  for (let i = 0; i < n - blindingFactors - 1; i++)
+    z.push(Fp.mul(z[z.length - 1], lp[i]));
   for (let i = 0; i < blindingFactors; i++) z.push(rng.nextScalar());
   const blind = rng.nextScalar();
-  return { commitment: Vesta.add(Vesta.msm(z, gLagrange), Vesta.scalarMul(blind, w)), zPoly: z };
+  return {
+    commitment: Vesta.add(Vesta.msm(z, gLagrange), Vesta.scalarMul(blind, w)),
+    zPoly: z,
+  };
 }
 
 /**
@@ -483,9 +529,11 @@ export function buildLookupExpressions(
 ): bigint[][] {
   const extN = 1 << extendedK;
   const rotMul = 1 << (extendedK - k);
-  const at = (a: bigint[], i: number, shift: number) => a[(((i + shift) % extN) + extN) % extN];
+  const at = (a: bigint[], i: number, shift: number) =>
+    a[(((i + shift) % extN) + extN) % extN];
   const active = (i: number) => Fp.sub(1n, Fp.add(c.lLast[i], c.lBlind[i]));
-  const mk = (f: (i: number) => bigint) => Array.from({ length: extN }, (_, i) => f(i));
+  const mk = (f: (i: number) => bigint) =>
+    Array.from({ length: extN }, (_, i) => f(i));
   return [
     mk((i) => Fp.mul(Fp.sub(1n, c.z[i]), c.l0[i])),
     mk((i) => Fp.mul(Fp.sub(Fp.square(c.z[i]), c.z[i]), c.lLast[i])),
@@ -501,7 +549,12 @@ export function buildLookupExpressions(
       return Fp.mul(Fp.sub(left, right), active(i));
     }),
     mk((i) => Fp.mul(Fp.sub(c.ap[i], c.sp[i]), c.l0[i])),
-    mk((i) => Fp.mul(Fp.mul(Fp.sub(c.ap[i], c.sp[i]), Fp.sub(c.ap[i], at(c.ap, i, -rotMul))), active(i))),
+    mk((i) =>
+      Fp.mul(
+        Fp.mul(Fp.sub(c.ap[i], c.sp[i]), Fp.sub(c.ap[i], at(c.ap, i, -rotMul))),
+        active(i),
+      ),
+    ),
   ];
 }
 

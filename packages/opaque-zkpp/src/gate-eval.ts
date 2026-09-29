@@ -96,7 +96,7 @@ export function compileAst(
         throw new Error("bad ast node");
     }
   };
-   
+
   const fn = new Function("row", "c", "F", `return ${gen(node)}`) as (
     row: number,
     ctx: EvalCtx,

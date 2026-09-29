@@ -20,7 +20,10 @@ export function classify(b: number): [boolean, boolean, boolean, boolean] {
     b >= 65 && b <= 90,
     b >= 97 && b <= 122,
     b >= 48 && b <= 57,
-    (b >= 33 && b <= 47) || (b >= 58 && b <= 64) || (b >= 91 && b <= 96) || (b >= 123 && b <= 126),
+    (b >= 33 && b <= 47) ||
+      (b >= 58 && b <= 64) ||
+      (b >= 91 && b <= 96) ||
+      (b >= 123 && b <= 126),
   ];
 }
 
@@ -39,11 +42,25 @@ export interface GadgetAWitness {
   compliant: boolean;
 }
 
-export function gadgetAWitness(pw: number[], policy: PolicyParams, n = MAX_PASSWORD_LEN): GadgetAWitness {
+export function gadgetAWitness(
+  pw: number[],
+  policy: PolicyParams,
+  n = MAX_PASSWORD_LEN,
+): GadgetAWitness {
   const len = pw.length;
   const w: GadgetAWitness = {
-    byte: [], active: [], isU: [], isL: [], isD: [], isS: [],
-    accU: [], accL: [], accD: [], accS: [], final: [0, 0, 0, 0], compliant: false,
+    byte: [],
+    active: [],
+    isU: [],
+    isL: [],
+    isD: [],
+    isS: [],
+    accU: [],
+    accL: [],
+    accD: [],
+    accS: [],
+    final: [0, 0, 0, 0],
+    compliant: false,
   };
   let [au, al, ad, as_] = [0, 0, 0, 0];
   for (let i = 0; i < n; i++) {

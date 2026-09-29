@@ -6,8 +6,8 @@
  * Sponge = ConstantLength<L>: state = [in_0, in_1, capacity=L·2^64], one permutation,
  * output state[0]. Verified against the Rust hash vectors.
  */
-import { Fp } from './field.js';
-import { POSEIDON_RC, POSEIDON_MDS } from './poseidon-constants.js';
+import { Fp } from "./field.js";
+import { POSEIDON_RC, POSEIDON_MDS } from "./poseidon-constants.js";
 
 const T = 3;
 const RATE = 2;
@@ -23,15 +23,24 @@ function sbox(x: bigint): bigint {
 
 function applyMds(state: bigint[]): void {
   const o0 = Fp.add(
-    Fp.add(Fp.mul(POSEIDON_MDS[0][0], state[0]), Fp.mul(POSEIDON_MDS[0][1], state[1])),
+    Fp.add(
+      Fp.mul(POSEIDON_MDS[0][0], state[0]),
+      Fp.mul(POSEIDON_MDS[0][1], state[1]),
+    ),
     Fp.mul(POSEIDON_MDS[0][2], state[2]),
   );
   const o1 = Fp.add(
-    Fp.add(Fp.mul(POSEIDON_MDS[1][0], state[0]), Fp.mul(POSEIDON_MDS[1][1], state[1])),
+    Fp.add(
+      Fp.mul(POSEIDON_MDS[1][0], state[0]),
+      Fp.mul(POSEIDON_MDS[1][1], state[1]),
+    ),
     Fp.mul(POSEIDON_MDS[1][2], state[2]),
   );
   const o2 = Fp.add(
-    Fp.add(Fp.mul(POSEIDON_MDS[2][0], state[0]), Fp.mul(POSEIDON_MDS[2][1], state[1])),
+    Fp.add(
+      Fp.mul(POSEIDON_MDS[2][0], state[0]),
+      Fp.mul(POSEIDON_MDS[2][1], state[1]),
+    ),
     Fp.mul(POSEIDON_MDS[2][2], state[2]),
   );
   state[0] = o0;
@@ -42,13 +51,15 @@ function applyMds(state: bigint[]): void {
 function permute(state: bigint[]): void {
   let round = 0;
   const full = () => {
-    for (let i = 0; i < T; i++) state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
+    for (let i = 0; i < T; i++)
+      state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
     for (let i = 0; i < T; i++) state[i] = sbox(state[i]);
     applyMds(state);
     round++;
   };
   const partial = () => {
-    for (let i = 0; i < T; i++) state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
+    for (let i = 0; i < T; i++)
+      state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
     state[0] = sbox(state[0]); // partial round: S-box on state[0] only
     applyMds(state);
     round++;
@@ -77,13 +88,15 @@ export function permuteWithCells(initial: bigint[]): Pow5Cells {
   const partialSbox: bigint[] = [];
   let round = 0;
   const full = () => {
-    for (let i = 0; i < T; i++) state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
+    for (let i = 0; i < T; i++)
+      state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
     for (let i = 0; i < T; i++) state[i] = sbox(state[i]);
     applyMds(state);
     round++;
   };
   const partial = () => {
-    for (let i = 0; i < T; i++) state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
+    for (let i = 0; i < T; i++)
+      state[i] = Fp.add(state[i], POSEIDON_RC[round][i]);
     state[0] = sbox(state[0]);
     applyMds(state);
     round++;
@@ -126,10 +139,11 @@ export function poseidonHash1(a: bigint): bigint {
 
 /** Iterative pair hashing: H(H(H(e0,e1),e2),...). Mirrors Rust poseidon_hash_chain. */
 export function hashChain(elements: bigint[]): bigint {
-  if (elements.length === 0) throw new Error('poseidon hashChain: empty input');
+  if (elements.length === 0) throw new Error("poseidon hashChain: empty input");
   if (elements.length === 1) return poseidonHash1(elements[0]);
   let acc = poseidonHash2(elements[0], elements[1]);
-  for (let i = 2; i < elements.length; i++) acc = poseidonHash2(acc, elements[i]);
+  for (let i = 2; i < elements.length; i++)
+    acc = poseidonHash2(acc, elements[i]);
   return acc;
 }
 
@@ -145,7 +159,10 @@ export function bytesToFieldElements(bytes: Uint8Array): bigint[] {
 }
 
 /** PoseidonHash(password_bytes ‖ salt_bytes) — history commitment. */
-export function computeHistoryCommitment(password: Uint8Array, salt: Uint8Array): bigint {
+export function computeHistoryCommitment(
+  password: Uint8Array,
+  salt: Uint8Array,
+): bigint {
   const fes = bytesToFieldElements(password).concat(bytesToFieldElements(salt));
   return hashChain(fes);
 }

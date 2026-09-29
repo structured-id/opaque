@@ -9,11 +9,11 @@
  *   proof = { R = k1·Com + k2·G2, z1 = k1 + c·α, z2 = k2 + c·β }
  *   verify: z1·Com + z2·G2 == R + c·M
  */
-import { sha512 } from '@noble/hashes/sha2.js';
-import { Fq } from './field.js';
-import { type Point, scalarMul, add, toBytes } from './curve.js';
+import { sha512 } from "@noble/hashes/sha2.js";
+import { Fq } from "./field.js";
+import { type Point, scalarMul, add, toBytes } from "./curve.js";
 
-const FS_DOMAIN = new TextEncoder().encode('SID_ZKPP_COMMIT_PROVE_FS_v1');
+const FS_DOMAIN = new TextEncoder().encode("SID_ZKPP_COMMIT_PROVE_FS_v1");
 
 /** Decode a little-endian hex string (pasta to_repr) into a field element. */
 function leHex(h: string): bigint {
@@ -30,8 +30,8 @@ function leHex(h: string): bigint {
  * Coordinates from `sid-pake-core/tests/interop_vectors.rs`.
  */
 export const G2: Point = {
-  x: leHex('b5910af07299e793b6e77cd798043fc27c7fd87a1e52f7c7499eef204cd3fe24'),
-  y: leHex('2bf91e17a829f947b667b3fa8f58ebd1553a4d16d9a36c96a91c2fdb4148b411'),
+  x: leHex("b5910af07299e793b6e77cd798043fc27c7fd87a1e52f7c7499eef204cd3fe24"),
+  y: leHex("2bf91e17a829f947b667b3fa8f58ebd1553a4d16d9a36c96a91c2fdb4148b411"),
 };
 
 export interface BindingProof {
@@ -51,7 +51,12 @@ function u64le(n: number): Uint8Array {
 }
 
 /** Fiat-Shamir challenge, byte-identical to the Rust transcript. */
-export function challenge(context: Uint8Array, com: Point, m: Point, rCommit: Point): bigint {
+export function challenge(
+  context: Uint8Array,
+  com: Point,
+  m: Point,
+  rCommit: Point,
+): bigint {
   const h = sha512.create();
   h.update(FS_DOMAIN);
   h.update(u64le(context.length));

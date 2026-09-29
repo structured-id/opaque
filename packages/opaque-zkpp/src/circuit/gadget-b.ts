@@ -5,7 +5,7 @@
  * For registration p_old = 0: diff[i] = (p_new[i])², diff_acc = running sum,
  * diff_inv = (final diff_acc)⁻¹ (non-zero proof).
  */
-import { Fp } from '../field.js';
+import { Fp } from "../field.js";
 
 export const MAX_PASSWORD_LEN = 128;
 
@@ -16,7 +16,11 @@ export interface GadgetBDiffAcc {
   diffInv: bigint;
 }
 
-export function gadgetBDiffAcc(pNew: bigint[], pOld: bigint[], n = MAX_PASSWORD_LEN): GadgetBDiffAcc {
+export function gadgetBDiffAcc(
+  pNew: bigint[],
+  pOld: bigint[],
+  n = MAX_PASSWORD_LEN,
+): GadgetBDiffAcc {
   const diff: bigint[] = [];
   const acc: bigint[] = [];
   let a = 0n;

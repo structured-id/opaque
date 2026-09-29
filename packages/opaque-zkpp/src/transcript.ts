@@ -7,11 +7,11 @@
  *   common_scalar: [2] ‖ s.to_repr                 (s   ∈ Fp, the Vesta scalar field)
  *   squeeze:       absorb [0]; challenge = Fp.from_uniform_bytes(clone.finalize())
  */
-import { blake2b } from '@noble/hashes/blake2.js';
-import { Fp, Fq } from './field.js';
-import type { Point } from './curve.js';
+import { blake2b } from "@noble/hashes/blake2.js";
+import { Fp, Fq } from "./field.js";
+import type { Point } from "./curve.js";
 
-const PERSONAL = new TextEncoder().encode('Halo2-Transcript');
+const PERSONAL = new TextEncoder().encode("Halo2-Transcript");
 const PREFIX_CHALLENGE = 0;
 const PREFIX_POINT = 1;
 const PREFIX_SCALAR = 2;
