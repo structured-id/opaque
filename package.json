@@ -9,6 +9,7 @@
     "build": "yarn workspaces foreach -A run build",
     "test": "yarn workspaces foreach -A run test",
     "lint": "yarn workspaces foreach -A run lint",
+    "format:check": "yarn workspaces foreach -A run format:check",
     "typecheck": "yarn workspaces foreach -A run typecheck"
   },
   "engines": {
