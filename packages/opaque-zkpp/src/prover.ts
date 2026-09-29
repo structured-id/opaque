@@ -407,13 +407,12 @@ export function buildMultiopen(
   x4: bigint,
   n: number,
 ): { qPrime: bigint[]; qEvals: bigint[]; pPoly: bigint[]; qPolys: bigint[][] } {
-  const qPolys = sets.map(
-    (s) =>
-      s.polys.reduce<bigint[] | null>(
-        (q, p) =>
-          q === null ? p.slice() : q.map((v, i) => Fp.add(Fp.mul(v, x1), p[i])),
-        null,
-      )!,
+  const qPolys = sets.map((s) =>
+    s.polys.reduce<bigint[] | null>(
+      (q, p) =>
+        q === null ? p.slice() : q.map((v, i) => Fp.add(Fp.mul(v, x1), p[i])),
+      null,
+    )!,
   );
   let qPrime: bigint[] | null = null;
   sets.forEach((s, si) => {

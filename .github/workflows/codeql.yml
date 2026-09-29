@@ -22,17 +22,17 @@ jobs:
       # corepack MUST be enabled before setup-node so Yarn 4 lockfile is discoverable
       - run: corepack enable
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: yarn
 
       - run: yarn install --immutable
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
 
       - run: yarn build
 
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
