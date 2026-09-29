@@ -1,11 +1,9 @@
 /**
- * Runtime backend selection: WASM-first with JS fallback.
- *
- * On first call, attempts to load the WASM backend (compiled from Rust opaque-ke).
- * If WASM is unavailable (no WASM support, module not found, etc.), falls back
- * to the pure JS implementation using @noble/curves + @noble/hashes.
- *
- * Both backends produce identical wire protocol — server is backend-agnostic.
+ * The OPAQUE backend: the pure-TypeScript implementation over @noble/curves
+ * and @noble/hashes, loaded on first use. This package ships no WASM; the
+ * WASM acceleration and the zero-knowledge password policy proof live in
+ * `@structured-id/opaque-zkpp`. `setBackend` substitutes another backend
+ * speaking the same RFC 9807 wire protocol.
  */
 
 import type { OpaqueBackend } from './types.js';
