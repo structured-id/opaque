@@ -1,19 +1,20 @@
-This repository is a monorepo with PER-PACKAGE licensing. There is no
-repository-wide license — each package's own LICENSE file is authoritative.
+@structured-id/opaque
+Copyright (C) Dmitry Prudnikov
 
-  packages/opaque        Apache-2.0
-                         @structured-id/opaque — RFC 9807 OPAQUE PAKE client
-                         with cryptographic password-policy validation.
+This package implements OPAQUE (RFC 9807) on the Pallas curve and the
+Zero-Knowledge Password Policy (ZKPP) method: a zero-knowledge proof that a
+password satisfies a policy, and was not used on the account before, without
+revealing the password.
 
-  packages/opaque-zkpp   AGPL-3.0-only (+ commercial license available)
-                         @structured-id/opaque-zkpp — Zero-Knowledge Password
-                         Policy prover (Halo2 over Pasta curves). Patent-protected.
+LICENSE
+-------
+This software is distributed under the Apache License, version 2.0. See the
+LICENSE file.
 
-The Apache-2.0 grant of packages/opaque does NOT extend to packages/opaque-zkpp,
-and the AGPL-3.0 copyleft of packages/opaque-zkpp does NOT extend to
-packages/opaque. The two packages are licensed and distributed independently;
-each package directory carries its own LICENSE file, which is authoritative for
-every file within that directory.
+PATENT
+------
+The ZKPP method is covered by one or more patents. Section 3 of the Apache
+License, version 2.0, grants every recipient of this package a patent license
+for this package as distributed and for works that include it.
 
-Copyright (c) Dmitry Prudnikov. All rights reserved where not granted by the
-applicable package license.
+Contact: oss@structured.id
