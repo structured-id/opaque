@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/structured-id/opaque/compare/opaque-v1.0.5...opaque-v2.0.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* `@structured-id/opaque-zkpp` and the ristretto255/P-256 client are gone; use `@structured-id/opaque`. `loadZkppClient` takes an options object.
+
+### Features
+
+* one TypeScript package with a native kernel registry ([#3](https://github.com/structured-id/opaque/issues/3)) ([bad5a95](https://github.com/structured-id/opaque/commit/bad5a956ea7babe55fb85d5d92ddd0a50e9de94d)), closes [#2](https://github.com/structured-id/opaque/issues/2)
+
 ## [1.0.5](https://github.com/structured-id/opaque/compare/opaque-v1.0.4...opaque-v1.0.5) (2026-09-29)
 
 
