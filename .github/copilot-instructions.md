@@ -2,69 +2,46 @@
 
 ## Project Context
 
-This is an OPAQUE (RFC 9807) client library for TypeScript/JavaScript. It provides password-authenticated key exchange (PAKE) without the server ever seeing the password. Core cryptographic operations are compiled to WASM for performance and security.
+A TypeScript client for OPAQUE (RFC 9807) on the Pallas curve together with a
+Zero-Knowledge Password Policy (ZKPP) proof: a Halo2 proof over the Pasta
+curves that the password meets the server's policy and was not used on the
+account before, bound to the password operation and to the OPAQUE request.
+
+The package ships only TypeScript. A native WebAssembly kernel is distributed
+separately and registers itself through `registerZkppKernel`; the loader
+prefers it where the page is cross-origin isolated and has threads, and falls
+back to the TypeScript kernel otherwise. Both kernels must produce the same
+bytes for the same inputs.
 
 ## Code Review Guidelines
 
 ### Security (Critical)
 
-- Flag any use of `Math.random()` — all randomness MUST use `crypto.getRandomValues()`.
-- Flag hardcoded keys, secrets, or test credentials outside of `tests/` directory.
+- Flag any use of `Math.random()`: randomness comes from `crypto.getRandomValues()`.
 - Flag any operation that leaks password material (logging, error messages, stack traces).
-- Verify constant-time comparisons for secret values — no early-return on mismatch.
-- OPAQUE protocol flow must match RFC 9807 section references in comments.
+- Secret comparisons are constant-time; no early return on mismatch.
+- Transcript and hash domains are byte-exact with the Rust reference; flag any
+  change to a domain string, field order or encoding that is not mirrored there.
 
 ### TypeScript Conventions
 
-- Use `Uint8Array` for all binary data — never `Buffer` (this is a browser-compatible library).
-- Prefer `.slice()` for defensive copies of `Uint8Array` — not spread (`[...arr]`).
-- Prefer the `concat()` utility from `src/crypto/utils.ts` for joining `Uint8Array` — not spread.
-- Use `@ts-expect-error` with issue reference for known TS 5.7+ `BufferSource` type mismatches — not `as unknown as` double casts.
-- All exported functions must have JSDoc with `@param` and `@returns`.
-- Async functions returning `Uint8Array` should use `Promise<Uint8Array>`, not `Promise<ArrayBuffer>`.
-
-### Naming
-
-- HKDF input parameter: `ikm` (Input Keying Material) — never `prk` (which implies extract already happened).
-- OPRF functions: `oprfBlind`, `oprfFinalize`, `oprfEvaluate` — camelCase with `oprf` prefix.
-- Test variables should match function parameter names for clarity.
+- `Uint8Array` for binary data, never `Buffer` (browser-compatible library).
+- Field elements are `bigint`; curve points use the types in `src/curve.ts`.
+- WebCrypto and `@noble/*` only; no Node `crypto` module imports in `src/`.
 
 ### Testing
 
-- Every public function must have unit tests covering happy path and error cases.
-- Crypto tests must verify determinism (same input → same output) and uniqueness (different input → different output).
-- Use `vitest` — not `jest`.
-- Test file naming: `tests/unit/<module>.test.ts`.
+- `vitest`, not `jest`. Node tests in `tests/*.test.ts`, real-browser tests in
+  `tests/*.browser.test.ts`.
+- Prover stages are checked byte-exact against fixtures dumped from the Rust
+  reference (`tests/fixtures/`).
 
 ### Commit Messages (Conventional Commits)
 
-All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-
 ```
 <type>[(scope)]: <description>
-
-[optional body]
-
-[optional footer]
 ```
 
-Valid types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `style`.
-
-Rules:
-- Title: imperative mood, lowercase, no period, max 50 characters.
-- Scope: optional, e.g. `crypto`, `oprf`, `ake`, `ci`.
-- Body: explain WHAT and WHY, not HOW. Use bullet points.
-- Footer: issue references (`Closes #N`).
-- Breaking changes: `feat!:` or `BREAKING CHANGE:` in footer.
-
-### Dependencies
-
-- Zero runtime dependencies — only `devDependencies` for build/test tooling.
-- WebCrypto API only — no Node.js `crypto` module imports.
-- The library must work in browsers, Node.js, Deno, and Cloudflare Workers.
-
-### What NOT to Flag
-
-- `TODO` and `Placeholder` comments are intentional — this is scaffold-stage code.
-- Reserved/unused parameters prefixed with `_` (e.g., `_serverId`) are protocol placeholders.
-- Zero-filled salt in HKDF is a known placeholder, documented in comments.
+Valid types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`,
+`chore`, `style`. Title imperative, lowercase, no period, at most 50 characters.
+Breaking changes: `feat!:` or a `BREAKING CHANGE:` footer.

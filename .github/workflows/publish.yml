@@ -22,27 +22,20 @@ jobs:
           # NO registry-url — it creates .npmrc with NODE_AUTH_TOKEN which
           # overrides OIDC trusted publishing with an invalid GITHUB_TOKEN
       - run: yarn install --immutable
-      # Monorepo: release-please tags releases per package as `<component>-v<version>`
-      # (e.g. opaque-v1.0.5, opaque-zkpp-v0.1.1). Resolve which package this release is.
-      - name: Resolve released package
-        id: pkg
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          echo "dir=packages/${TAG%-v*}" >> "$GITHUB_OUTPUT"
-          echo "version=${TAG##*-v}" >> "$GITHUB_OUTPUT"
-      - name: Build released package
-        run: yarn workspace "$(node -p "require('./${{ steps.pkg.outputs.dir }}/package.json').name")" build
+      - run: yarn build
       # Auth: npm trusted publishing via OIDC (id-token: write + environment: release).
-      # Configure per package at npmjs.com → Package Settings → Trusted Publishers:
+      # Configured at npmjs.com → Package Settings → Trusted Publishers:
       #   Organization: structured-id, Repository: opaque,
       #   Workflow: publish.yml, Environment: release
+      # The release tag is `opaque-v<version>` and must match package.json.
       - name: Publish to npm
-        working-directory: ${{ steps.pkg.outputs.dir }}
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
           NAME="$(node -p "require('./package.json').name")"
           PV="$(node -p "require('./package.json').version")"
-          if [ "${PV}" != "${{ steps.pkg.outputs.version }}" ]; then
-            echo "Release tag version (${{ steps.pkg.outputs.version }}) != package.json (${PV})."
+          if [ "${PV}" != "${TAG##*-v}" ]; then
+            echo "Release tag version (${TAG##*-v}) != package.json (${PV})."
             exit 1
           fi
           if npm view "${NAME}@${PV}" version >/dev/null 2>&1; then
