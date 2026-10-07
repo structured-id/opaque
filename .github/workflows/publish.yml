@@ -3,6 +3,12 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  # Publish an existing release again (after a failed publish), by its tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, e.g. opaque-v2.0.0
+        required: true
 
 permissions:
   contents: read
@@ -12,15 +18,22 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: release
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
       - run: corepack enable
+      # Trusted publishing setup as documented for setup-node v7: the registry
+      # is configured and no NODE_AUTH_TOKEN is set, so npm authenticates by
+      # exchanging the job's OIDC token. No package cache in a publish job.
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: yarn
-          # NO registry-url — it creates .npmrc with NODE_AUTH_TOKEN which
-          # overrides OIDC trusted publishing with an invalid GITHUB_TOKEN
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: yarn install --immutable
       - run: yarn build
       # Auth: npm trusted publishing via OIDC (id-token: write + environment: release).
@@ -28,9 +41,10 @@ jobs:
       #   Organization: structured-id, Repository: opaque,
       #   Workflow: publish.yml, Environment: release
       # The release tag is `opaque-v<version>` and must match package.json.
+      # Verbose logging shows the registry's answer when the OIDC exchange is refused.
       - name: Publish to npm
         env:
-          TAG: ${{ github.ref_name }}
+          NPM_CONFIG_LOGLEVEL: verbose
         run: |
           NAME="$(node -p "require('./package.json').name")"
           PV="$(node -p "require('./package.json').version")"
