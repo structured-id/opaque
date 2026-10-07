@@ -157,9 +157,17 @@ export interface ZkppClient {
     ownerDomain: Uint8Array,
   ): Promise<PasswordHistoryRequest | null>;
   /**
-   * Prove `password` for the operation over the request of `start`: policy,
-   * breach and history tags, bound to the operation and the request. Sent with
-   * the final record. `null` for a password the circuit cannot hold.
+   * Prove `password` for the operation over the request of `start`: the
+   * character policy and the history tags, bound to the operation and the
+   * request. Sent with the final record. `null` for a password the circuit
+   * cannot hold.
+   *
+   * The proof is about the password as it enters the OPRF (the request's
+   * element). The server never sees what a client feeds to OPRF Finalize, so
+   * material a client adds there (trailing NUL bytes, say) is not covered by
+   * the proof; it cannot replace the proven password, which every sign-in
+   * still needs. Breach screening is not proven by this package's key: its
+   * breach filter is empty.
    */
   prove(
     password: string,

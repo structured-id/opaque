@@ -59,7 +59,12 @@ export function deserializeScalar(bytes: Uint8Array): bigint {
 export const randomScalar = (rng: RandomSource): bigint =>
   Fq.fromUniformBytes(rng(64));
 
-/** Hash-to-group of the password as the circuit hashes it. */
+/**
+ * Hash-to-group of the password as the circuit hashes it. Zero padding makes
+ * `P` and `P` followed by NUL bytes one element, unlike RFC 9497's
+ * length-prefixed hashing: the proof covers this element, while Finalize
+ * (which sees the input as given) stays client-side and unproven by design.
+ */
 export function hashToGroup(input: Uint8Array): NonNullable<Point> {
   if (input.length === 0) throw new Error("oprf: empty input");
   const padded =

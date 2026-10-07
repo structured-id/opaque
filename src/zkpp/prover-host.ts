@@ -19,6 +19,8 @@ import { openKeyStore } from "./key-store.js";
 const HIDDEN_LANES = 1;
 
 export interface ProverHostOptions {
+  /** Prove on the calling thread and start no worker, even where they exist. */
+  local?: boolean;
   /** Lane count; defaults to the logical cores, at most 8 (the coset classes). */
   lanes?: number;
   /** Start the prover worker (default: the package's `prover-worker.js`). */
@@ -179,9 +181,16 @@ class WorkerProver implements Prover {
   }
 }
 
-/** A prover in workers where the platform has them, else on this thread. */
+/**
+ * A prover in workers where the platform has them and `local` is not asked
+ * for, else on this thread.
+ */
 export function createProver(opts: ProverHostOptions = {}): Prover {
-  if (typeof Worker !== "undefined" && typeof MessageChannel !== "undefined")
+  if (
+    !opts.local &&
+    typeof Worker !== "undefined" &&
+    typeof MessageChannel !== "undefined"
+  )
     return new WorkerProver(opts);
   const core = new ProverCore(undefined, secureRandom, openKeyStore());
   return {

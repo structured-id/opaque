@@ -82,6 +82,20 @@ describe("TypeScript prover host", () => {
   it("is not stopped while it answers", () => {
     expect(spawn().stopped).toBe(false);
   });
+
+  // The single-thread tier exists for pages that cannot start workers (a CSP
+  // without worker-src, say); it must not start them merely because the
+  // Worker constructor is there.
+  it("starts no worker when asked to prove on the calling thread", () => {
+    let started = 0;
+    const host = createProver({
+      local: true,
+      spawnProver: () => (started++, new FakeWorker()) as unknown as Worker,
+      spawnLane: () => (started++, new FakeWorker()) as unknown as Worker,
+    });
+    expect(started).toBe(0);
+    expect(host.stopped).toBe(false);
+  });
 });
 
 describe("TypeScript client over a stopped prover", () => {

@@ -44,7 +44,7 @@ export function createTsClient(
 ): ZkppClient {
   let prover: Prover | null = null;
   const proverOf = (): Prover =>
-    (prover ??= createProver(kernel === "ts" ? { lanes: 1 } : opts));
+    (prover ??= createProver(kernel === "ts" ? { local: true } : opts));
 
   return {
     kernel,

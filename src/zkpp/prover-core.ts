@@ -264,6 +264,9 @@ export class ProverCore {
         d: job.d,
         domains: job.domains,
         history,
+        // The key is derived with this same empty filter, as the verifier's
+        // is: the proof states no breach screening. A populated filter
+        // changes the verifying key and is not part of this package.
         breachBits: new Array(256).fill(0),
       }),
       instances,

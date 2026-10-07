@@ -144,11 +144,12 @@ describe("ZKPP kernel load fallback", () => {
   });
 
   // Node without a native kernel: the default load is this package's own
-  // TypeScript client; asking for a WASM tier with none registered is refused.
+  // TypeScript client on the calling thread (Node has no Web Workers); asking
+  // for a WASM tier with none registered is refused.
   it("loads the TypeScript client and refuses an unregistered WASM tier", async () => {
     delete (globalThis as Record<symbol, unknown>)[REGISTRY];
     const client = await loadZkppClient();
-    expect(client.kernel).toBe("ts-threaded");
+    expect(client.kernel).toBe("ts");
     expect(typeof client.prepare).toBe("function");
     await expect(
       loadZkppClient({ kernel: "wasm-simd-threaded" }),

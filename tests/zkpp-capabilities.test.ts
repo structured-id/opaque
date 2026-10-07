@@ -8,13 +8,14 @@ describe("ZKPP kernel auto-selection", () => {
     expect(c.simd128).toBe(true); // Node ≥16 supports WASM SIMD
   });
 
-  // Node has SharedArrayBuffer but no Web Workers, which the WASM artifacts
-  // spawn for their thread pool; its worker_threads serve the pure-TS pool,
-  // so the threaded TS tier is the best one here.
-  it("selects the threaded TS tier in Node", () => {
+  // Node has SharedArrayBuffer but no Web Workers, which both the WASM
+  // artifacts and the TS prover pool start. The prover then runs on the
+  // calling thread, so the kernel must say so: reporting the threaded tier
+  // there hid a proof blocking the event loop behind a "threaded" label.
+  it("selects the single-thread TS tier in Node", () => {
     const c = detectCapabilities();
     expect(c.threads).toBe(false);
-    expect(c.workers).toBe(true);
-    expect(selectKernel()).toBe("ts-threaded");
+    expect(c.workers).toBe(false);
+    expect(selectKernel()).toBe("ts");
   });
 });

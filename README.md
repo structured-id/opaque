@@ -58,8 +58,8 @@ checked when read.
 | Kernel | Where |
 |--------|-------|
 | `wasm-simd-threaded`, `wasm-threaded` | a registered native kernel on a cross-origin-isolated page |
-| `ts-threaded` | TypeScript on a Web Worker pool (or Node `worker_threads`) |
-| `ts` | TypeScript on one thread |
+| `ts-threaded` | TypeScript on a Web Worker pool |
+| `ts` | TypeScript on the calling thread (Node, or a page without Web Workers) |
 
 This package ships only TypeScript. A native WebAssembly kernel is distributed
 separately; importing its registration entry point once, before the first

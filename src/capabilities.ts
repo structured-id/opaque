@@ -11,7 +11,7 @@
  * Its artifacts import shared memory and spawn Web Workers for their thread
  * pool, so they need SharedArrayBuffer (cross-origin isolation in browsers:
  * COOP+COEP) and the Worker constructor; without either no WASM tier loads.
- * Node has the buffer but no Web Workers, so it gets the TS tiers.
+ * Node has the buffer but no Web Workers, so it gets the single-thread TS tier.
  */
 import { registeredZkppKernel } from "./kernel.js";
 
@@ -22,7 +22,7 @@ export interface Capabilities {
   simd128: boolean;
   /** Shared-memory threads usable (SharedArrayBuffer + cross-origin isolation). */
   threads: boolean;
-  /** A worker pool is constructible (browser Web Worker or Node worker_threads). */
+  /** Web Workers exist, so the TS prover runs off the calling thread. */
   workers: boolean;
 }
 
@@ -64,8 +64,8 @@ export function detectCapabilities(): Capabilities {
   // spawn Web Workers for their rayon pool, so SharedArrayBuffer and the
   // Worker constructor are both required. In browsers the buffer additionally
   // requires a cross-origin-isolated page (COOP+COEP); `crossOriginIsolated`
-  // is the gate there. Node has the buffer but no Web Workers (its
-  // worker_threads serve only the TS pool), so it never gets a WASM tier.
+  // is the gate there. Node has the buffer but no Web Workers, so it never
+  // gets a WASM tier.
   const coi = (globalThis as { crossOriginIsolated?: boolean })
     .crossOriginIsolated;
   const threads =
@@ -73,15 +73,10 @@ export function detectCapabilities(): Capabilities {
     typeof Worker !== "undefined" &&
     (coi === undefined || coi === true);
 
-  // A worker pool is usable if the browser exposes Web Workers, or we're on Node
-  // (worker_threads is built in). Unlike `threads` this needs no SharedArrayBuffer
-  // / cross-origin isolation: the TS worker pool moves data by structured clone.
-  const g = globalThis as {
-    process?: { versions?: { node?: string } };
-    Worker?: unknown;
-  };
-  const isNode = !!g.process?.versions?.node;
-  const workers = typeof g.Worker !== "undefined" || isNode;
+  // The TS prover pool is Web Workers, which need no SharedArrayBuffer or
+  // cross-origin isolation (data moves by structured clone). Node has none, so
+  // its prover runs on the calling thread and the kernel reports exactly that.
+  const workers = typeof Worker !== "undefined";
 
   return { wasm, simd128, threads, workers };
 }
