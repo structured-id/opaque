@@ -1,0 +1,152 @@
+// OPAQUE on Pallas, TypeScript client against the Rust reference: each vector
+// is a registration and a login of the reference client (opaque-ke 4.0.1 over
+// PallasCipherSuite) against the reference server, with the client's RNG
+// output recorded in draw order (fixtures/opaque-vectors.json, from the
+// sid-pake-core `opaque_vectors` example). Replaying that byte stream, the TS
+// client must emit the same request, state, record and KE3, derive the same
+// session and export keys, and fail a wrong password at the same step.
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import {
+  loginFinish,
+  loginStart,
+  registrationFinish,
+  registrationStart,
+} from "../src/opaque/client.js";
+import { fromBase64 } from "../src/opaque/bytes.js";
+import type { RandomSource } from "../src/random.js";
+
+interface Vector {
+  password: string;
+  loginPassword: string;
+  registrationStartDrawn: string;
+  registrationRequest: string;
+  registrationState: string;
+  registrationResponse: string;
+  registrationFinishDrawn: string;
+  registrationRecord: string;
+  loginStartDrawn: string;
+  credentialRequest: string;
+  loginState: string;
+  credentialResponse: string;
+  finalization?: string;
+  sessionKey?: string;
+  exportKey?: string;
+  registrationExportKey?: string;
+  loginError?: string;
+}
+
+const vectors: Vector[] = JSON.parse(
+  readFileSync(
+    new URL("./fixtures/opaque-vectors.json", import.meta.url),
+    "utf8",
+  ),
+);
+
+const unhex = (h: string): Uint8Array =>
+  Uint8Array.from(h.match(/.{2}/g) ?? [], (b) => parseInt(b, 16));
+const hex = (b: Uint8Array): string =>
+  [...b].map((v) => v.toString(16).padStart(2, "0")).join("");
+const stateHex = (state: string): string => hex(fromBase64(state, "state"));
+
+/** Replays `drawn` in order and fails if the client draws more or less. */
+function replay(drawn: string): RandomSource & { done(): void } {
+  const bytes = unhex(drawn);
+  let at = 0;
+  const rng = ((n: number) => {
+    if (at + n > bytes.length) throw new Error("drew past the recorded stream");
+    const out = bytes.slice(at, at + n);
+    at += n;
+    return out;
+  }) as RandomSource & { done(): void };
+  rng.done = () => expect(at).toBe(bytes.length);
+  return rng;
+}
+
+describe("OPAQUE on Pallas matches the Rust reference", () => {
+  vectors.forEach((v, i) => {
+    it(`vector ${i}: registration`, async () => {
+      const password = unhex(v.password);
+      const startRng = replay(v.registrationStartDrawn);
+      const start = registrationStart(password, startRng);
+      startRng.done();
+      expect(hex(start.request)).toBe(v.registrationRequest);
+      expect(stateHex(start.state)).toBe(v.registrationState);
+
+      const finishRng = replay(v.registrationFinishDrawn);
+      const record = await registrationFinish(
+        password,
+        start.state,
+        unhex(v.registrationResponse),
+        finishRng,
+      );
+      finishRng.done();
+      expect(hex(record)).toBe(v.registrationRecord);
+    }, 60000);
+
+    it(`vector ${i}: login`, async () => {
+      const password = unhex(v.loginPassword);
+      const rng = replay(v.loginStartDrawn);
+      const start = loginStart(password, rng);
+      rng.done();
+      expect(hex(start.request)).toBe(v.credentialRequest);
+      expect(stateHex(start.state)).toBe(v.loginState);
+
+      const finishing = loginFinish(
+        password,
+        start.state,
+        unhex(v.credentialResponse),
+      );
+      if (v.loginError) {
+        // A wrong password fails when the envelope does not open.
+        await expect(finishing).rejects.toThrow("invalid login");
+        return;
+      }
+      const done = await finishing;
+      expect(hex(done.finalization)).toBe(v.finalization);
+      expect(hex(done.sessionKey)).toBe(v.sessionKey);
+      expect(hex(done.exportKey)).toBe(v.exportKey);
+      expect(v.exportKey).toBe(v.registrationExportKey);
+    }, 60000);
+  });
+
+  it("refuses a registration response that reflects the request", async () => {
+    const v = vectors[0];
+    const password = unhex(v.password);
+    const start = registrationStart(password, replay(v.registrationStartDrawn));
+    const reflected = unhex(v.registrationResponse);
+    reflected.set(start.request, 0);
+    await expect(
+      registrationFinish(password, start.state, reflected),
+    ).rejects.toThrow("reflects the request");
+  });
+
+  it("refuses an identity server key", async () => {
+    const v = vectors[0];
+    const password = unhex(v.password);
+    const start = registrationStart(password, replay(v.registrationStartDrawn));
+    const response = unhex(v.registrationResponse);
+    response.fill(0, 32);
+    await expect(
+      registrationFinish(password, start.state, response),
+    ).rejects.toThrow("identity");
+  });
+
+  it("refuses a response of the wrong length", async () => {
+    const v = vectors[0];
+    const password = unhex(v.password);
+    const start = registrationStart(password, replay(v.registrationStartDrawn));
+    await expect(
+      registrationFinish(
+        password,
+        start.state,
+        unhex(v.registrationResponse).subarray(0, 63),
+      ),
+    ).rejects.toThrow("too short");
+  });
+
+  it("refuses an empty password", () => {
+    expect(() => registrationStart(new Uint8Array(0))).toThrow("empty");
+    expect(() => loginStart(new Uint8Array(0))).toThrow("empty");
+  });
+});

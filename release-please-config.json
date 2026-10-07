@@ -1,16 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "separate-pull-requests": false,
-  "group-pull-request-title-pattern": "chore${scope}: release${component}",
-  "pull-request-header": "Merging publishes every package listed below to npm, each under its own tag and GitHub release.",
+  "include-component-in-tag": true,
   "packages": {
-    "packages/opaque": {
+    ".": {
       "release-type": "node",
       "component": "opaque"
-    },
-    "packages/opaque-zkpp": {
-      "release-type": "node",
-      "component": "opaque-zkpp"
     }
   }
 }

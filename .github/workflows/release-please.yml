@@ -28,30 +28,3 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-      # One pull request releases every changed package, and release-please
-      # titles it without versions. Name it by the tags it will create
-      # (`opaque-v1.0.6/opaque-zkpp-v0.2.0`): the group title pattern
-      # `chore${scope}: release${component}` still parses this after merge,
-      # while the versions themselves are read from the body.
-      - name: Title the release pull request by its tags
-        if: ${{ steps.release.outputs.pr }}
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR: ${{ steps.release.outputs.pr }}
-        run: |
-          number="$(jq -r .number <<<"$PR")"
-          head="$(jq -r .headBranchName <<<"$PR")"
-          manifest() {
-            gh api "repos/${GITHUB_REPOSITORY}/contents/.release-please-manifest.json?ref=$1" --jq .content | base64 -d
-          }
-          config="$(gh api "repos/${GITHUB_REPOSITORY}/contents/release-please-config.json?ref=${GITHUB_SHA}" --jq .content | base64 -d)"
-          tags="$(jq -rn \
-            --argjson next "$(manifest "$head")" \
-            --argjson current "$(manifest "$GITHUB_SHA")" \
-            --argjson config "$config" \
-            '[$next | to_entries[] | select($current[.key] != .value)
-              | "\($config.packages[.key].component)-v\(.value)"] | join("/")')"
-          if [ -n "$tags" ]; then
-            gh pr edit "$number" --repo "$GITHUB_REPOSITORY" --title "chore(main): release ${tags}"
-          fi
