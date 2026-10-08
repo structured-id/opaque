@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/structured-id/opaque/compare/opaque-v2.0.0...opaque-v2.0.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ci:** publish releases through npm trusted publishing ([#7](https://github.com/structured-id/opaque/issues/7)) ([cfb79fa](https://github.com/structured-id/opaque/commit/cfb79fad7912c4b16aee4008590218e1d3b4646b)), closes [#5](https://github.com/structured-id/opaque/issues/5)
+
 ## [2.0.0](https://github.com/structured-id/opaque/compare/opaque-v1.0.5...opaque-v2.0.0) (2026-10-07)
 
 
