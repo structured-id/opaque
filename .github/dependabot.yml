@@ -1,20 +1,15 @@
 version: 2
 updates:
+  # One pull request per ecosystem and run, major updates included: related
+  # packages (vite and vitest, the eslint family) move together.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
     groups:
-      minor-and-patch:
+      npm:
         patterns:
           - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
 
@@ -22,5 +17,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     commit-message:
       prefix: "chore(ci)"
