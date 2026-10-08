@@ -163,11 +163,10 @@ export interface ZkppClient {
    * cannot hold.
    *
    * The proof is about the password as it enters the OPRF (the request's
-   * element). The server never sees what a client feeds to OPRF Finalize, so
-   * material a client adds there (trailing NUL bytes, say) is not covered by
-   * the proof; it cannot replace the proven password, which every sign-in
-   * still needs. Breach screening is not proven by this package's key: its
-   * breach filter is empty.
+   * element) and nothing beyond it: the server never sees what a client
+   * feeds to OPRF Finalize or its key stretching, so the final record is not
+   * bound by the proof. Breach screening is not proven by this package's key:
+   * its breach filter is empty.
    */
   prove(
     password: string,
