@@ -1,41 +1,64 @@
-name: Dependabot Auto-Merge
+name: Dependabot auto-merge
 
+# Dependabot pull requests merge themselves once the required checks pass,
+# major updates included. This runs on a schedule and after every push to
+# main rather than on the pull request: a run started by Dependabot gets no
+# Actions secrets, and auto-merge enabled with GITHUB_TOKEN would land on main
+# without starting the workflows of that push. The app token avoids both.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "17 */3 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
-  pull-requests: write
   contents: read
+
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
 
 jobs:
   auto-merge:
+    name: Auto-merge
+    if: github.repository_owner == 'structured-id'
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]'
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v3
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Generate App Token
+      - name: App token
         id: app-token
-        if: steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ vars.RELEASER_CLIENT_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
 
-      - name: Approve and enable auto-merge for minor/patch updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
-        run: |
-          gh pr review --approve "$PR_NUMBER"
-          gh pr merge --auto --squash "$PR_NUMBER"
+      - name: Queue open Dependabot pull requests
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # A plain assignment, so a failed query fails the step under bash -e;
+          # inside the `for` list it would read as no pull requests.
+          prs=$(gh pr list --author app/dependabot --state open --json number --jq '.[].number')
+          status=0
+          for pr in $prs; do
+            # One query per pull request. A failed query marks the run failed
+            # and moves on to the next pull request; read inside an `if` test
+            # it would only read as "no".
+            if ! state=$(gh pr view "$pr" --json autoMergeRequest,mergeStateStatus \
+                --jq '"\(.autoMergeRequest == null) \(.mergeStateStatus)"'); then
+              status=1
+              continue
+            fi
+            read -r unqueued merge_state <<< "$state"
+            if [ "$unqueued" = "true" ]; then
+              gh pr merge --auto --squash "$pr" || status=1
+            fi
+            # Required checks are strict: a pull request behind main must be
+            # brought up to date, and Dependabot rebases on its own only on a
+            # conflict or at its next scheduled run.
+            if [ "$merge_state" = "BEHIND" ]; then
+              gh pr update-branch "$pr" || status=1
+            fi
+          done
+          exit "$status"
