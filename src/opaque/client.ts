@@ -229,15 +229,19 @@ function expandLabel(secret: Uint8Array, label: string, context: Uint8Array) {
 }
 
 /**
- * Finish signing in against the server's CredentialResponse: KE3 and the
- * session key. A wrong password, or a response not made for this credential,
- * fails here.
+ * Finish signing in against the server's CredentialResponse under `context`
+ * (RFC 9807 §6): KE3 and the session key. The context is empty for an
+ * ordinary sign-in and the operation's own inside another operation; the
+ * server must use the same. A wrong password, a response not made for this
+ * credential or another context fails here.
  */
 export async function loginFinish(
   password: Uint8Array,
   state: string,
   response: Uint8Array,
+  context: Uint8Array,
 ): Promise<ClientLoginFinish> {
+  if (context.length > 0xffff) throw new Error("OPAQUE context too long");
   const s = new Reader(fromBase64(state, "state"), "state");
   const blind = deserializeScalar(s.take(LEN));
   const request = s.take(3 * LEN);
@@ -290,7 +294,8 @@ export async function loginFinish(
   const serverE = deserializePublicKey(serverEPk);
   const preamble = concat([
     utf8("OPAQUEv1-"),
-    i2osp2(0),
+    i2osp2(context.length),
+    context,
     i2osp2(LEN),
     clientPk,
     request,

@@ -96,6 +96,7 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
         password,
         start.state,
         unhex(v.credentialResponse),
+        unhex(v.context),
       );
       if (v.loginError) {
         // A wrong password fails when the envelope does not open.
@@ -108,6 +109,24 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       expect(hex(done.exportKey)).toBe(v.exportKey);
       expect(v.exportKey).toBe(v.registrationExportKey);
     }, 60000);
+  });
+
+  // A sign-in inside another operation verifies only under that operation's
+  // context: the reference server's answer made under it does not finish as
+  // an ordinary sign-in, so neither can stand for the other.
+  it("finishes a sign-in only under the context it was made for", async () => {
+    const v = vectors.find((c: { context: string }) => c.context !== "");
+    expect(v).toBeDefined();
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    await expect(
+      loginFinish(
+        password,
+        start.state,
+        unhex(v.credentialResponse),
+        new Uint8Array(0),
+      ),
+    ).rejects.toThrow("invalid login");
   });
 
   it("refuses a registration response that reflects the request", async () => {

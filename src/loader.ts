@@ -184,11 +184,16 @@ export interface ZkppClient {
   ): Promise<Uint8Array>;
   /** Start signing in with a Pallas OPAQUE credential. */
   loginStart(password: string): Promise<ZkppLoginStart>;
-  /** Finish signing in; returns KE3. A wrong password fails here. */
+  /**
+   * Finish signing in under `context` (RFC 9807 §6): empty for an ordinary
+   * sign-in, the operation's own inside another operation (a password
+   * change's confirmation). Returns KE3. A wrong password fails here.
+   */
   loginFinish(
     password: string,
     state: string,
     response: Uint8Array,
+    context: Uint8Array,
   ): Promise<Uint8Array>;
 }
 
