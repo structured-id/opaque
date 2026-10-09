@@ -42,6 +42,18 @@ const HTC_TRY_BITS = 8;
 const TRIES = 1 << HTC_TRY_BITS;
 const HALF_WORDS = 25;
 const HALF_TOP_BITS = 3;
+
+/**
+ * The bound every hash-to-curve offset in the circuit shares with the native
+ * mappings: offset < 2^HTC_TRY_BITS, the tries those mappings make.
+ */
+function checkHtcOffset(
+  lookup: LookupRangeCheckConfig,
+  layouter: Layouter,
+  offset: AssignedCell,
+): void {
+  lookup.copyShortCheck(layouter, offset, HTC_TRY_BITS);
+}
 const HASH_BITS = 255;
 
 /** Breach Bloom filter parameters of the circuit: m = 2^8 bits, k = 3 slices. */
@@ -512,7 +524,7 @@ function synthesizeBinder(
     hPoint.x.copyAdvice(region, config.inputCol, 2);
     return cell;
   });
-  config.ecc.lookup.copyShortCheck(layouter, offsetCell, HTC_TRY_BITS);
+  checkHtcOffset(config.ecc.lookup, layouter, offsetCell);
 
   const blindCell = layouter.assignRegion((region) =>
     region.assignAdvice(config.inputCol, 0, () => blind),
@@ -661,6 +673,9 @@ function synthesizeHistory(
     }
     return accCell as AssignedCell;
   });
+  // The scan alone reaches 2^8 when every row is below the offset; the
+  // offset is bounded like Gadget C's, to the tries of canonicalPoint.
+  checkHtcOffset(config.ecc.lookup, layouter, count);
 
   const { hCell, rCell } = layouter.assignRegion((region) => {
     region.enableSelector(config.qBind, 0);
