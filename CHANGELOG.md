@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/structured-id/opaque/compare/opaque-v2.0.1...opaque-v2.0.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **zkpp:** bound the history offset and take the even root in the Pallas mapping ([#17](https://github.com/structured-id/opaque/issues/17)) ([9b3c3d3](https://github.com/structured-id/opaque/commit/9b3c3d3898c5e7f955d58848db13f700a1a47ed6)), closes [#16](https://github.com/structured-id/opaque/issues/16)
+
 ## [2.0.1](https://github.com/structured-id/opaque/compare/opaque-v2.0.0...opaque-v2.0.1) (2026-10-08)
 
 
