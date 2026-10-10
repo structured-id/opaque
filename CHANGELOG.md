@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/structured-id/opaque/compare/opaque-v2.1.0...opaque-v2.1.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **opaque:** refuse an OPRF input of 2^16 - 1 bytes or more up front ([#23](https://github.com/structured-id/opaque/issues/23)) ([96aade2](https://github.com/structured-id/opaque/commit/96aade2b606ea5881e4762a1ecdc7a6917e62767)), closes [#22](https://github.com/structured-id/opaque/issues/22)
+
 ## [2.1.0](https://github.com/structured-id/opaque/compare/opaque-v2.0.2...opaque-v2.1.0) (2026-10-10)
 
 
