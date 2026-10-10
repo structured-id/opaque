@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/structured-id/opaque/compare/opaque-v2.0.2...opaque-v2.1.0) (2026-10-10)
+
+
+### Features
+
+* **opaque:** finish a sign-in under an operation's context ([#20](https://github.com/structured-id/opaque/issues/20)) ([30a977e](https://github.com/structured-id/opaque/commit/30a977edc086b4f454f3fbca9ec40949e358bef2)), closes [#19](https://github.com/structured-id/opaque/issues/19)
+
 ## [2.0.2](https://github.com/structured-id/opaque/compare/opaque-v2.0.1...opaque-v2.0.2) (2026-10-09)
 
 
