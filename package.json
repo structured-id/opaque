@@ -1,6 +1,6 @@
 {
   "name": "@structured-id/opaque",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "type": "module",
   "description": "OPAQUE (RFC 9807) on the Pallas curve with a zero-knowledge proof that the password meets the server's policy and was not used on the account before, without revealing it.",
   "main": "dist/index.cjs",
