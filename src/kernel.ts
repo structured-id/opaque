@@ -45,11 +45,15 @@ export class ZkppKernelContractError extends Error {
 }
 
 const REGISTRY = Symbol.for("@structured-id/opaque/zkpp-kernel");
+const CONTRACT = Symbol.for("@structured-id/opaque/zkpp-kernel-contract");
 
-/** What a copy of this package from before the revision stored: the bare factory. */
-type Registry = {
-  [REGISTRY]?: ZkppKernelRegistration | ZkppKernelFactory;
-};
+/**
+ * The slot holds a callable factory, the form every copy of this package
+ * reads, including one from before the revision, which calls it directly;
+ * the revision rides on it under its own key.
+ */
+type RegisteredFactory = ZkppKernelFactory & { [CONTRACT]?: number };
+type Registry = { [REGISTRY]?: RegisteredFactory };
 
 /**
  * Register the native kernel, implementing client contract `contract`. A
@@ -60,12 +64,15 @@ export function registerZkppKernel(
   factory: ZkppKernelFactory,
   contract: number,
 ): void {
-  (globalThis as Registry)[REGISTRY] = { factory, contract };
+  // A wrapper carries the revision, so the kernel's own function is not mutated.
+  const entry: RegisteredFactory = (kernel) => factory(kernel);
+  entry[CONTRACT] = contract;
+  (globalThis as Registry)[REGISTRY] = entry;
 }
 
 /** The registered native kernel, if any; one stored without a revision is revision 0. */
 export function registeredZkppKernel(): ZkppKernelRegistration | undefined {
   const entry = (globalThis as Registry)[REGISTRY];
   if (entry === undefined) return undefined;
-  return typeof entry === "function" ? { factory: entry, contract: 0 } : entry;
+  return { factory: entry, contract: entry[CONTRACT] ?? 0 };
 }

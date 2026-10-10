@@ -166,21 +166,28 @@ describe("ZKPP kernel load fallback", () => {
 
   // A bundler may duplicate this package; the registry lives on globalThis
   // under a Symbol.for key, so every copy sees one registration.
-  it("keeps the registration on a global symbol shared by every copy", () => {
-    const factory: ZkppKernelFactory = async () => ({}) as ZkppClient;
-    registerZkppKernel(factory);
-    expect((globalThis as Record<symbol, unknown>)[REGISTRY]).toEqual({
-      factory,
-      contract: ZKPP_KERNEL_CONTRACT,
-    });
+  // A copy of this package from before the revision reads the slot as the
+  // factory and calls it; a kernel of this revision answers it too (its
+  // `loginFinish` context is optional), so the slot stays callable.
+  it("keeps the registration callable on a global symbol shared by every copy", async () => {
+    const client = { kernel: "wasm-threaded" } as ZkppClient;
+    registerZkppKernel(async () => client);
+    const slot = (globalThis as Record<symbol, unknown>)[REGISTRY];
+    expect(typeof slot).toBe("function");
+    await expect((slot as ZkppKernelFactory)("wasm-threaded")).resolves.toBe(
+      client,
+    );
+    expect(registeredZkppKernel()?.contract).toBe(ZKPP_KERNEL_CONTRACT);
   });
 
-  it("a later registration replaces an earlier one", () => {
-    const first: ZkppKernelFactory = async () => ({}) as ZkppClient;
-    const second: ZkppKernelFactory = async () => ({}) as ZkppClient;
-    registerZkppKernel(first);
-    registerZkppKernel(second);
-    expect(registeredZkppKernel()?.factory).toBe(second);
+  it("a later registration replaces an earlier one", async () => {
+    const firstClient = { kernel: "wasm-threaded" } as ZkppClient;
+    const secondClient = { kernel: "wasm-threaded" } as ZkppClient;
+    registerZkppKernel(async () => firstClient);
+    registerZkppKernel(async () => secondClient);
+    await expect(
+      registeredZkppKernel()?.factory("wasm-threaded"),
+    ).resolves.toBe(secondClient);
   });
 
   // Node without a native kernel: the default load is this package's own
