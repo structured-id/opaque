@@ -26,7 +26,11 @@ import {
   type TsKernel,
   type WasmKernel,
 } from "./capabilities.js";
-import { registeredZkppKernel } from "./kernel.js";
+import {
+  registeredZkppKernel,
+  ZKPP_KERNEL_CONTRACT,
+  ZkppKernelContractError,
+} from "./kernel.js";
 import type { ZkppProgress } from "./progress.js";
 import { createTsClient } from "./backend-ts.js";
 import type { ProverHostOptions } from "./zkpp/prover-host.js";
@@ -185,15 +189,15 @@ export interface ZkppClient {
   /** Start signing in with a Pallas OPAQUE credential. */
   loginStart(password: string): Promise<ZkppLoginStart>;
   /**
-   * Finish signing in under `context` (RFC 9807 §6): empty for an ordinary
-   * sign-in, the operation's own inside another operation (a password
-   * change's confirmation). Returns KE3. A wrong password fails here.
+   * Finish signing in under `context` (RFC 9807 §6): empty (the default) for
+   * an ordinary sign-in, the operation's own inside another operation (a
+   * password change's confirmation). Returns KE3. A wrong password fails here.
    */
   loginFinish(
     password: string,
     state: string,
     response: Uint8Array,
-    context: Uint8Array,
+    context?: Uint8Array,
   ): Promise<Uint8Array>;
 }
 
@@ -265,5 +269,9 @@ async function load(
   if (!isWasmKernel(kernel)) return createTsClient(kernel, prover);
   const native = registeredZkppKernel();
   if (!native) throw new ZkppUnavailableError(kernel);
-  return native(kernel);
+  // A kernel of another revision would miss or misread what this package
+  // passes (a sign-in context it ignores): it is not loaded.
+  if (native.contract !== ZKPP_KERNEL_CONTRACT)
+    throw new ZkppKernelContractError(kernel, native.contract);
+  return native.factory(kernel);
 }

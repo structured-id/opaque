@@ -23,8 +23,12 @@ export type {
   TsKernel,
   WasmKernel,
 } from "./capabilities.js";
-export { registerZkppKernel } from "./kernel.js";
-export type { ZkppKernelFactory } from "./kernel.js";
+export {
+  registerZkppKernel,
+  ZKPP_KERNEL_CONTRACT,
+  ZkppKernelContractError,
+} from "./kernel.js";
+export type { ZkppKernelFactory, ZkppKernelRegistration } from "./kernel.js";
 export {
   DEFAULT_STEP_MS,
   PREPARE_STEPS,

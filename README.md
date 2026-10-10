@@ -78,8 +78,9 @@ Cross-Origin-Embedder-Policy: require-corp
 
 Without arguments `loadZkppClient` chooses the kernel while loading, before
 the client holds any operation's cryptographic state. If the selected native
-kernel does not load (its artifacts are unreachable or fail to compile), it is
-treated as unavailable: the loader uses the TypeScript tier instead and reports
+kernel does not load (its artifacts are unreachable or fail to compile, or it
+implements another revision of the client contract than `ZKPP_KERNEL_CONTRACT`,
+`ZkppKernelContractError`), it is treated as unavailable: the loader uses the TypeScript tier instead and reports
 why through `onFallback`, or the console when no callback is given. Load the client when the page opens so the
 download and compilation are done before the user submits a password:
 

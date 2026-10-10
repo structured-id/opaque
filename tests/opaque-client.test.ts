@@ -111,6 +111,24 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
     }, 60000);
   });
 
+  // An ordinary sign-in may leave the context out: it is the empty one, the
+  // RFC 9807 default, so a caller written before the argument existed still
+  // signs in.
+  it("finishes an ordinary sign-in without a context argument", async () => {
+    const v = vectors.find(
+      (c: { context: string; finalization?: string }) =>
+        c.context === "" && c.finalization,
+    );
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    const finished = await loginFinish(
+      password,
+      start.state,
+      unhex(v.credentialResponse),
+    );
+    expect(hex(finished.finalization)).toBe(v.finalization);
+  });
+
   // A sign-in inside another operation verifies only under that operation's
   // context: the reference server's answer made under it does not finish as
   // an ordinary sign-in, so neither can stand for the other.

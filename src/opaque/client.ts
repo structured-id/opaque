@@ -230,16 +230,16 @@ function expandLabel(secret: Uint8Array, label: string, context: Uint8Array) {
 
 /**
  * Finish signing in against the server's CredentialResponse under `context`
- * (RFC 9807 §6): KE3 and the session key. The context is empty for an
- * ordinary sign-in and the operation's own inside another operation; the
- * server must use the same. A wrong password, a response not made for this
- * credential or another context fails here.
+ * (RFC 9807 §6): KE3 and the session key. The context is empty (the RFC's
+ * default) for an ordinary sign-in and the operation's own inside another
+ * operation; the server must use the same. A wrong password, a response not
+ * made for this credential or another context fails here.
  */
 export async function loginFinish(
   password: Uint8Array,
   state: string,
   response: Uint8Array,
-  context: Uint8Array,
+  context: Uint8Array = new Uint8Array(0),
 ): Promise<ClientLoginFinish> {
   if (context.length > 0xffff) throw new Error("OPAQUE context too long");
   const s = new Reader(fromBase64(state, "state"), "state");

@@ -5,10 +5,18 @@ import { selectKernel, type Capabilities } from "../src/capabilities.js";
 import { loadZkppClient, ZkppUnavailableError } from "../src/loader.js";
 import type { ZkppClient } from "../src/loader.js";
 import {
-  registerZkppKernel,
+  registerZkppKernel as registerAt,
   registeredZkppKernel,
+  ZKPP_KERNEL_CONTRACT,
+  ZkppKernelContractError,
   type ZkppKernelFactory,
 } from "../src/kernel.js";
+
+/** Register `factory` as a kernel of this revision unless told otherwise. */
+const registerZkppKernel = (
+  factory: ZkppKernelFactory,
+  contract = ZKPP_KERNEL_CONTRACT,
+) => registerAt(factory, contract);
 
 const cap = (
   wasm: boolean,
@@ -72,6 +80,35 @@ describe("ZKPP kernel registry", () => {
     expect(seen).toEqual(["wasm-threaded"]);
   });
 
+  // A kernel built for an earlier revision of the client contract (one that
+  // takes no sign-in context) would ignore what this package passes; it does
+  // not load: an explicit request fails, the automatic choice falls back to
+  // the TypeScript tier and says why.
+  it("refuses a native kernel built for another contract revision", async () => {
+    const client = { kernel: "wasm-threaded" } as ZkppClient;
+    registerZkppKernel(async () => client, ZKPP_KERNEL_CONTRACT - 1);
+    await expect(
+      loadZkppClient({ kernel: "wasm-threaded" }),
+    ).rejects.toBeInstanceOf(ZkppKernelContractError);
+    const fallbacks: { reason: unknown }[] = [];
+    const chosen = await loadZkppClient({
+      capabilities: cap(true, false, true, false),
+      onFallback: (f) => fallbacks.push(f),
+    });
+    expect(chosen.kernel).toBe("ts");
+    expect(fallbacks[0]?.reason).toBeInstanceOf(ZkppKernelContractError);
+  });
+
+  // A copy of this package from before the revision stored the bare factory;
+  // that kernel predates the contract and does not load either.
+  it("refuses a kernel registered without a contract revision", async () => {
+    (globalThis as Record<symbol, unknown>)[REGISTRY] = async () =>
+      ({ kernel: "wasm-threaded" }) as ZkppClient;
+    await expect(
+      loadZkppClient({ kernel: "wasm-threaded" }),
+    ).rejects.toBeInstanceOf(ZkppKernelContractError);
+  });
+
   it("refuses a WASM tier when no native kernel is registered", async () => {
     await expect(
       loadZkppClient({ kernel: "wasm-simd-threaded" }),
@@ -132,7 +169,10 @@ describe("ZKPP kernel load fallback", () => {
   it("keeps the registration on a global symbol shared by every copy", () => {
     const factory: ZkppKernelFactory = async () => ({}) as ZkppClient;
     registerZkppKernel(factory);
-    expect((globalThis as Record<symbol, unknown>)[REGISTRY]).toBe(factory);
+    expect((globalThis as Record<symbol, unknown>)[REGISTRY]).toEqual({
+      factory,
+      contract: ZKPP_KERNEL_CONTRACT,
+    });
   });
 
   it("a later registration replaces an earlier one", () => {
@@ -140,7 +180,7 @@ describe("ZKPP kernel load fallback", () => {
     const second: ZkppKernelFactory = async () => ({}) as ZkppClient;
     registerZkppKernel(first);
     registerZkppKernel(second);
-    expect(registeredZkppKernel()).toBe(second);
+    expect(registeredZkppKernel()?.factory).toBe(second);
   });
 
   // Node without a native kernel: the default load is this package's own
