@@ -20,6 +20,9 @@ import { concat, i2osp2, utf8 } from "./bytes.js";
 /** Longest password the circuit holds; shorter ones are zero-padded to it. */
 export const MAX_PASSWORD_LEN = 128;
 
+/** Longest OPRF input (RFC 9497 §5.1: smaller than 2^16 - 1 bytes). */
+export const MAX_OPRF_INPUT = 0xfffe;
+
 /** voprf `CipherSuite::ID`. */
 const SUITE_ID = utf8("Pallas-Poseidon-SHA256");
 
@@ -67,6 +70,9 @@ export const randomScalar = (rng: RandomSource): bigint =>
  */
 export function hashToGroup(input: Uint8Array): NonNullable<Point> {
   if (input.length === 0) throw new Error("oprf: empty input");
+  // RFC 9497 §5.1: inputs MUST be smaller than 2^16 - 1 bytes. Refused here,
+  // before any message, rather than at Finalize after the server answered.
+  if (input.length > MAX_OPRF_INPUT) throw new Error("oprf: password too long");
   const padded =
     input.length < MAX_PASSWORD_LEN ? new Uint8Array(MAX_PASSWORD_LEN) : input;
   if (padded !== input) padded.set(input);
@@ -109,6 +115,9 @@ export function finalize(
   blind: bigint,
   evaluated: Uint8Array,
 ): Uint8Array {
+  // The finish may hash a different password than its start: the same
+  // RFC 9497 §5.1 bound, so no record is made that no sign-in could open.
+  if (input.length > MAX_OPRF_INPUT) throw new Error("oprf: password too long");
   const z = deserializeElement(evaluated);
   const n = Pallas.scalarMul(Fq.inv(blind), z);
   return sha256(
