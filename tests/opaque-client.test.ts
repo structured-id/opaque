@@ -203,6 +203,23 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
     expect((failure as Error).name).not.toBe("ZkppInvalidLoginError");
   });
 
+  // OPRF inputs must be smaller than 2^16 - 1 bytes (RFC 9497 §5.1): a longer
+  // password is refused before any message, not at Finalize after the
+  // server answered. The longest allowed one starts.
+  it("refuses a password of 2^16 - 1 bytes or more before any message", () => {
+    const longest = new Uint8Array(0xfffe).fill(0x61);
+    const tooLong = new Uint8Array(0xffff).fill(0x61);
+    expect(() =>
+      registrationStart(longest, replay(vectors[0].registrationStartDrawn)),
+    ).not.toThrow();
+    expect(() =>
+      registrationStart(tooLong, replay(vectors[0].registrationStartDrawn)),
+    ).toThrow("password too long");
+    expect(() =>
+      loginStart(tooLong, replay(vectors[0].loginStartDrawn)),
+    ).toThrow("password too long");
+  });
+
   it("refuses a registration response that reflects the request", async () => {
     const v = vectors[0];
     const password = unhex(v.password);
