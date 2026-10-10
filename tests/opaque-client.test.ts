@@ -102,8 +102,11 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
         unhex(v.context),
       );
       if (v.loginError) {
-        // A wrong password fails when the envelope does not open.
-        await expect(finishing).rejects.toThrow("invalid login");
+        // A wrong password fails when the envelope does not open, with the
+        // error a caller recognises as a refused password.
+        await expect(finishing).rejects.toMatchObject({
+          name: "ZkppInvalidLoginError",
+        });
         return;
       }
       const done = await finishing;
@@ -181,7 +184,23 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
         unhex(v.credentialResponse),
         new Uint8Array(0),
       ),
-    ).rejects.toThrow("invalid login");
+    ).rejects.toMatchObject({ name: "ZkppInvalidLoginError" });
+  });
+
+  // Only a sign-in that does not verify is a refused password: a malformed
+  // response fails with its own error, so a caller does not ask the user to
+  // retype a password that was never judged.
+  it("fails a malformed response with its own error, not a refused password", async () => {
+    const v = vectors[0];
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    const failure = await loginFinish(
+      password,
+      start.state,
+      unhex(v.credentialResponse).slice(1),
+    ).catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).name).not.toBe("ZkppInvalidLoginError");
   });
 
   it("refuses a registration response that reflects the request", async () => {

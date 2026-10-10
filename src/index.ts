@@ -16,6 +16,7 @@ export type {
   ZkppProof,
   ZkppRegistrationStart,
 } from "./loader.js";
+export { ZkppInvalidLoginError } from "./opaque/client.js";
 export { selectKernel } from "./capabilities.js";
 export type {
   Capabilities,

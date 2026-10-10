@@ -229,6 +229,19 @@ function expandLabel(secret: Uint8Array, label: string, context: Uint8Array) {
 }
 
 /**
+ * The sign-in did not verify: a wrong password, a response not made for this
+ * credential or another context (RFC 9807 §6.4 envelope recovery or server
+ * MAC). Recognised by its `name`, so a kernel and every copy of this package
+ * report it alike; any other failure of a sign-in is not this error.
+ */
+export class ZkppInvalidLoginError extends Error {
+  constructor() {
+    super("invalid login");
+    this.name = "ZkppInvalidLoginError";
+  }
+}
+
+/**
  * Finish signing in against the server's CredentialResponse under `context`
  * (RFC 9807 §6): KE3 and the session key. The context is empty (the RFC's
  * default) for an ordinary sign-in and the operation's own inside another
@@ -274,7 +287,7 @@ export async function loginFinish(
   const envelopeNonce = unmasked.slice(LEN, 2 * LEN);
   const envelopeTag = unmasked.slice(2 * LEN);
 
-  const invalid = new Error("invalid login");
+  const invalid = new ZkppInvalidLoginError();
   let serverPoint: NonNullable<Point>;
   try {
     serverPoint = deserializePublicKey(serverPk);

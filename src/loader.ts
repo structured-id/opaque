@@ -191,7 +191,9 @@ export interface ZkppClient {
   /**
    * Finish signing in under `context` (RFC 9807 §6): empty (the default) for
    * an ordinary sign-in, the operation's own inside another operation (a
-   * password change's confirmation). Returns KE3. A wrong password fails here.
+   * password change's confirmation). Returns KE3. A sign-in that does not
+   * verify (a wrong password) fails with an error named
+   * `ZkppInvalidLoginError`; every other failure keeps its own error.
    */
   loginFinish(
     password: string,
