@@ -7,7 +7,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createTsClient } from "../src/backend-ts.js";
 import { selectKernel } from "../src/capabilities.js";
 import { loadZkppClient, type ZkppKernelFallback } from "../src/loader.js";
-import { registerZkppKernel } from "../src/kernel.js";
+import {
+  registerZkppKernel as registerAt,
+  ZKPP_KERNEL_CONTRACT,
+  type ZkppKernelFactory,
+} from "../src/kernel.js";
+
+const registerZkppKernel = (factory: ZkppKernelFactory) =>
+  registerAt(factory, ZKPP_KERNEL_CONTRACT);
 
 const REGISTRY = Symbol.for("@structured-id/opaque/zkpp-kernel");
 afterEach(() => {

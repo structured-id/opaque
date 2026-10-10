@@ -134,9 +134,10 @@ export function createTsClient(
       return opaque.loginStart(utf8(password));
     },
 
-    async loginFinish(password, state, response) {
-      return (await opaque.loginFinish(utf8(password), state, response))
-        .finalization;
+    async loginFinish(password, state, response, context) {
+      return (
+        await opaque.loginFinish(utf8(password), state, response, context)
+      ).finalization;
     },
   };
 }

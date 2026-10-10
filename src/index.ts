@@ -16,6 +16,7 @@ export type {
   ZkppProof,
   ZkppRegistrationStart,
 } from "./loader.js";
+export { ZkppInvalidLoginError } from "./opaque/client.js";
 export { selectKernel } from "./capabilities.js";
 export type {
   Capabilities,
@@ -23,8 +24,12 @@ export type {
   TsKernel,
   WasmKernel,
 } from "./capabilities.js";
-export { registerZkppKernel } from "./kernel.js";
-export type { ZkppKernelFactory } from "./kernel.js";
+export {
+  registerZkppKernel,
+  ZKPP_KERNEL_CONTRACT,
+  ZkppKernelContractError,
+} from "./kernel.js";
+export type { ZkppKernelFactory, ZkppKernelRegistration } from "./kernel.js";
 export {
   DEFAULT_STEP_MS,
   PREPARE_STEPS,

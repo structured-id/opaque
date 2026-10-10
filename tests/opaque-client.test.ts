@@ -14,11 +14,14 @@ import {
   registrationStart,
 } from "../src/opaque/client.js";
 import { fromBase64 } from "../src/opaque/bytes.js";
+import { createTsClient } from "../src/backend-ts.js";
 import type { RandomSource } from "../src/random.js";
 
 interface Vector {
   password: string;
   loginPassword: string;
+  /** The sign-in's OPAQUE context, hex; empty for an ordinary sign-in. */
+  context: string;
   registrationStartDrawn: string;
   registrationRequest: string;
   registrationState: string;
@@ -96,10 +99,14 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
         password,
         start.state,
         unhex(v.credentialResponse),
+        unhex(v.context),
       );
       if (v.loginError) {
-        // A wrong password fails when the envelope does not open.
-        await expect(finishing).rejects.toThrow("invalid login");
+        // A wrong password fails when the envelope does not open, with the
+        // error a caller recognises as a refused password.
+        await expect(finishing).rejects.toMatchObject({
+          name: "ZkppInvalidLoginError",
+        });
         return;
       }
       const done = await finishing;
@@ -108,6 +115,92 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       expect(hex(done.exportKey)).toBe(v.exportKey);
       expect(v.exportKey).toBe(v.registrationExportKey);
     }, 60000);
+  });
+
+  // The context's length is a two-byte field of the preamble (RFC 9807 §6):
+  // a longer one cannot be encoded and is refused before any computation.
+  it("refuses a context longer than 65535 bytes", async () => {
+    const v = vectors[0];
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    await expect(
+      loginFinish(
+        password,
+        start.state,
+        unhex(v.credentialResponse),
+        new Uint8Array(0x10000),
+      ),
+    ).rejects.toThrow("OPAQUE context too long");
+  });
+
+  // The packaged TypeScript client passes the context through to the
+  // sign-in: it finishes the reference's sign-in under its context.
+  it("finishes a sign-in under a context through the TypeScript client", async () => {
+    const v = vectors.find((c) => c.context !== "")!;
+    const state = loginStart(
+      unhex(v.loginPassword),
+      replay(v.loginStartDrawn),
+    ).state;
+    const client = createTsClient("ts");
+    const finalization = await client.loginFinish(
+      new TextDecoder().decode(unhex(v.loginPassword)),
+      state,
+      unhex(v.credentialResponse),
+      unhex(v.context),
+    );
+    expect(hex(finalization)).toBe(v.finalization);
+  });
+
+  // An ordinary sign-in may leave the context out: it is the empty one, the
+  // RFC 9807 default, so a caller written before the argument existed still
+  // signs in.
+  it("finishes an ordinary sign-in without a context argument", async () => {
+    const v = vectors.find(
+      (c: { context: string; finalization?: string }) =>
+        c.context === "" && c.finalization,
+    );
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    const finished = await loginFinish(
+      password,
+      start.state,
+      unhex(v.credentialResponse),
+    );
+    expect(hex(finished.finalization)).toBe(v.finalization);
+  });
+
+  // A sign-in inside another operation verifies only under that operation's
+  // context: the reference server's answer made under it does not finish as
+  // an ordinary sign-in, so neither can stand for the other.
+  it("finishes a sign-in only under the context it was made for", async () => {
+    const v = vectors.find((c: { context: string }) => c.context !== "");
+    expect(v).toBeDefined();
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    await expect(
+      loginFinish(
+        password,
+        start.state,
+        unhex(v.credentialResponse),
+        new Uint8Array(0),
+      ),
+    ).rejects.toMatchObject({ name: "ZkppInvalidLoginError" });
+  });
+
+  // Only a sign-in that does not verify is a refused password: a malformed
+  // response fails with its own error, so a caller does not ask the user to
+  // retype a password that was never judged.
+  it("fails a malformed response with its own error, not a refused password", async () => {
+    const v = vectors[0];
+    const password = unhex(v.loginPassword);
+    const start = loginStart(password, replay(v.loginStartDrawn));
+    const failure = await loginFinish(
+      password,
+      start.state,
+      unhex(v.credentialResponse).slice(1),
+    ).catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).name).not.toBe("ZkppInvalidLoginError");
   });
 
   it("refuses a registration response that reflects the request", async () => {
