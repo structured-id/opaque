@@ -115,6 +115,9 @@ export function finalize(
   blind: bigint,
   evaluated: Uint8Array,
 ): Uint8Array {
+  // The finish may hash a different password than its start: the same
+  // RFC 9497 §5.1 bound, so no record is made that no sign-in could open.
+  if (input.length > MAX_OPRF_INPUT) throw new Error("oprf: password too long");
   const z = deserializeElement(evaluated);
   const n = Pallas.scalarMul(Fq.inv(blind), z);
   return sha256(

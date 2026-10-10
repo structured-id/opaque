@@ -220,6 +220,24 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
     ).toThrow("password too long");
   });
 
+  // The finish hashes its own password into Finalize: one past the limit is
+  // refused there too, so no record is made that no sign-in could open.
+  it("refuses a too-long password at registration finish", async () => {
+    const v = vectors[0];
+    const start = registrationStart(
+      unhex(v.password),
+      replay(v.registrationStartDrawn),
+    );
+    await expect(
+      registrationFinish(
+        new Uint8Array(0xffff).fill(0x61),
+        start.state,
+        unhex(v.registrationResponse),
+        replay(v.registrationFinishDrawn),
+      ),
+    ).rejects.toThrow("password too long");
+  });
+
   it("refuses a registration response that reflects the request", async () => {
     const v = vectors[0];
     const password = unhex(v.password);
