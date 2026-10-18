@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/structured-id/opaque/compare/opaque-v2.1.1...opaque-v2.2.0) (2026-10-18)
+
+
+### Features
+
+* return the export key from registration and sign-in ([#27](https://github.com/structured-id/opaque/issues/27)) ([532518a](https://github.com/structured-id/opaque/commit/532518a4f09ea162e1f50973f9e1f33d5f5ab24c)), closes [#26](https://github.com/structured-id/opaque/issues/26)
+
 ## [2.1.1](https://github.com/structured-id/opaque/compare/opaque-v2.1.0...opaque-v2.1.1) (2026-10-10)
 
 
