@@ -28,7 +28,10 @@ const cap = (
 const REGISTRY = Symbol.for("@structured-id/opaque/zkpp-kernel");
 
 afterEach(() => {
-  delete (globalThis as Record<symbol, unknown>)[REGISTRY];
+  const g = globalThis as Record<symbol, unknown>;
+  for (const key of Object.getOwnPropertySymbols(g))
+    if (Symbol.keyFor(key)?.startsWith("@structured-id/opaque/zkpp-kernel"))
+      delete g[key];
 });
 
 describe("ZKPP kernel selection priority", () => {
@@ -165,19 +168,55 @@ describe("ZKPP kernel load fallback", () => {
   });
 
   // A bundler may duplicate this package; the registry lives on globalThis
-  // under a Symbol.for key, so every copy sees one registration.
-  // A copy of this package from before the revision reads the slot as the
-  // factory and calls it; a kernel of this revision answers it too (its
-  // `loginFinish` context is optional), so the slot stays callable.
-  it("keeps the registration callable on a global symbol shared by every copy", async () => {
+  // under Symbol.for keys, so every copy of this revision sees one
+  // registration.
+  it("shares the registration on a global symbol with every copy", async () => {
+    const client = { kernel: "wasm-threaded" } as ZkppClient;
+    registerZkppKernel(async () => client);
+    expect(registeredZkppKernel()?.contract).toBe(ZKPP_KERNEL_CONTRACT);
+    await expect(
+      registeredZkppKernel()?.factory("wasm-threaded"),
+    ).resolves.toBe(client);
+  });
+
+  // A copy of this package from before contract revisions reads the shared
+  // slot as a bare factory and calls it. A kernel of this revision returns
+  // objects from its finishes where that copy expects the bytes it sends, so
+  // such a copy gets a refusal instead of a client it would misuse.
+  it("refuses a kernel of this revision to a copy from before revisions", async () => {
     const client = { kernel: "wasm-threaded" } as ZkppClient;
     registerZkppKernel(async () => client);
     const slot = (globalThis as Record<symbol, unknown>)[REGISTRY];
     expect(typeof slot).toBe("function");
-    await expect((slot as ZkppKernelFactory)("wasm-threaded")).resolves.toBe(
-      client,
+    await expect((slot as ZkppKernelFactory)("wasm-threaded")).rejects.toThrow(
+      /predates kernel contract revisions/,
     );
-    expect(registeredZkppKernel()?.contract).toBe(ZKPP_KERNEL_CONTRACT);
+  });
+
+  // A copy of revision 1 reads the revision beside the shared slot and does
+  // not load a kernel of this revision.
+  it("names this revision to a copy of an earlier revision", () => {
+    registerZkppKernel(async () => ({}) as ZkppClient);
+    const slot = (globalThis as Record<symbol, unknown>)[REGISTRY] as {
+      [k: symbol]: unknown;
+    };
+    expect(slot[Symbol.for("@structured-id/opaque/zkpp-kernel-contract")]).toBe(
+      ZKPP_KERNEL_CONTRACT,
+    );
+  });
+
+  // A registration of another revision replaces this revision's: the loader
+  // then refuses it rather than loading the earlier kernel.
+  it("a registration of another revision replaces this revision's", async () => {
+    registerZkppKernel(async () => ({}) as ZkppClient);
+    registerZkppKernel(
+      async () => ({}) as ZkppClient,
+      ZKPP_KERNEL_CONTRACT + 1,
+    );
+    expect(registeredZkppKernel()?.contract).toBe(ZKPP_KERNEL_CONTRACT + 1);
+    await expect(
+      loadZkppClient({ kernel: "wasm-threaded" }),
+    ).rejects.toBeInstanceOf(ZkppKernelContractError);
   });
 
   it("a later registration replaces an earlier one", async () => {
