@@ -12,8 +12,10 @@ export type {
   ProveOptions,
   ZkppClient,
   ZkppKernelFallback,
+  ZkppLoginFinish,
   ZkppLoginStart,
   ZkppProof,
+  ZkppRegistrationFinish,
   ZkppRegistrationStart,
 } from "./loader.js";
 export { ZkppInvalidLoginError } from "./opaque/client.js";

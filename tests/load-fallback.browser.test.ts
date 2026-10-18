@@ -16,9 +16,11 @@ import {
 const registerZkppKernel = (factory: ZkppKernelFactory) =>
   registerAt(factory, ZKPP_KERNEL_CONTRACT);
 
-const REGISTRY = Symbol.for("@structured-id/opaque/zkpp-kernel");
 afterEach(() => {
-  delete (globalThis as Record<symbol, unknown>)[REGISTRY];
+  const g = globalThis as Record<symbol, unknown>;
+  for (const key of Object.getOwnPropertySymbols(g))
+    if (Symbol.keyFor(key)?.startsWith("@structured-id/opaque/zkpp-kernel"))
+      delete g[key];
 });
 
 /** A module worker whose script the server does not have. */

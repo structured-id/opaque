@@ -115,6 +115,24 @@ export interface ZkppLoginStart {
   state: string;
 }
 
+export interface ZkppRegistrationFinish {
+  /** OPAQUE RegistrationRecord (proto `registration_record`). */
+  record: Uint8Array;
+  /**
+   * The credential's export key (RFC 9807 §6.4): 32 bytes only the client
+   * holds, the same one a sign-in with this credential recovers; for the
+   * application's own client-side protection. Never send it.
+   */
+  exportKey: Uint8Array;
+}
+
+export interface ZkppLoginFinish {
+  /** KE3, the CredentialFinalization to send. */
+  finalization: Uint8Array;
+  /** The credential's export key, as {@link ZkppRegistrationFinish.exportKey}. */
+  exportKey: Uint8Array;
+}
+
 export interface ProveOptions {
   /** The operation's history context, from the server's preparing step. */
   context: PasswordHistoryContext;
@@ -179,28 +197,29 @@ export interface ZkppClient {
   ): Promise<ZkppProof | null>;
   /**
    * Finish against the server's RegistrationResponse: the OPAQUE
-   * RegistrationRecord (proto `registration_record`).
+   * RegistrationRecord to send and the credential's export key.
    */
   registrationFinish(
     password: string,
     state: string,
     response: Uint8Array,
-  ): Promise<Uint8Array>;
+  ): Promise<ZkppRegistrationFinish>;
   /** Start signing in with a Pallas OPAQUE credential. */
   loginStart(password: string): Promise<ZkppLoginStart>;
   /**
    * Finish signing in under `context` (RFC 9807 §6): empty (the default) for
    * an ordinary sign-in, the operation's own inside another operation (a
-   * password change's confirmation). Returns KE3. A sign-in that does not
-   * verify (a wrong password) fails with an error named
-   * `ZkppInvalidLoginError`; every other failure keeps its own error.
+   * password change's confirmation). Returns KE3 and the credential's export
+   * key. A sign-in that does not verify (a wrong password) fails with an
+   * error named `ZkppInvalidLoginError`; every other failure keeps its own
+   * error.
    */
   loginFinish(
     password: string,
     state: string,
     response: Uint8Array,
     context?: Uint8Array,
-  ): Promise<Uint8Array>;
+  ): Promise<ZkppLoginFinish>;
 }
 
 /** A WASM kernel was asked for and none is registered. */

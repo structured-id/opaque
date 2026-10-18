@@ -19,10 +19,11 @@ export type ZkppKernelFactory = (kernel: WasmKernel) => Promise<ZkppClient>;
 
 /**
  * The revision of the {@link ZkppClient} contract this package calls. 1:
- * `loginFinish` takes the OPAQUE context (RFC 9807 §6). A kernel states the
- * revision it implements as its own constant, not by importing this one.
+ * `loginFinish` takes the OPAQUE context (RFC 9807 §6). 2: `registrationFinish`
+ * and `loginFinish` also return the credential's export key. A kernel states
+ * the revision it implements as its own constant, not by importing this one.
  */
-export const ZKPP_KERNEL_CONTRACT = 1;
+export const ZKPP_KERNEL_CONTRACT = 2;
 
 /** A registered native kernel and the contract revision it implements. */
 export interface ZkppKernelRegistration {
@@ -46,13 +47,19 @@ export class ZkppKernelContractError extends Error {
 
 const REGISTRY = Symbol.for("@structured-id/opaque/zkpp-kernel");
 const CONTRACT = Symbol.for("@structured-id/opaque/zkpp-kernel-contract");
+const KERNEL = Symbol.for("@structured-id/opaque/zkpp-kernel-factory");
 
 /**
- * The slot holds a callable factory, the form every copy of this package
- * reads, including one from before the revision, which calls it directly;
- * the revision rides on it under its own key.
+ * The one slot holds a callable factory, the form every copy of this package
+ * reads: a copy from before revisions calls it directly, and copies of
+ * revision 1 read the revision riding on it under its own key. From revision
+ * 2 the kernel's factory rides on it too, so any later registration, by a
+ * copy of any revision, replaces the whole entry.
  */
-type RegisteredFactory = ZkppKernelFactory & { [CONTRACT]?: number };
+type RegisteredFactory = ZkppKernelFactory & {
+  [CONTRACT]?: number;
+  [KERNEL]?: ZkppKernelFactory;
+};
 type Registry = { [REGISTRY]?: RegisteredFactory };
 
 /**
@@ -64,9 +71,20 @@ export function registerZkppKernel(
   factory: ZkppKernelFactory,
   contract: number,
 ): void {
-  // A wrapper carries the revision, so the kernel's own function is not mutated.
-  const entry: RegisteredFactory = (kernel) => factory(kernel);
+  // From revision 2 the finishes return objects where a copy from before
+  // revisions expects the bytes it sends: that copy, calling the slot
+  // directly, gets a refusal; copies of these revisions read the factory
+  // riding on it.
+  const entry: RegisteredFactory =
+    contract >= 2
+      ? async () => {
+          throw new Error(
+            `ZKPP kernel implements client contract ${contract}; this copy of @structured-id/opaque predates kernel contract revisions`,
+          );
+        }
+      : (kernel) => factory(kernel);
   entry[CONTRACT] = contract;
+  if (contract >= 2) entry[KERNEL] = (kernel) => factory(kernel);
   (globalThis as Registry)[REGISTRY] = entry;
 }
 
@@ -74,5 +92,6 @@ export function registerZkppKernel(
 export function registeredZkppKernel(): ZkppKernelRegistration | undefined {
   const entry = (globalThis as Registry)[REGISTRY];
   if (entry === undefined) return undefined;
-  return { factory: entry, contract: entry[CONTRACT] ?? 0 };
+  const contract = entry[CONTRACT] ?? 0;
+  return { factory: entry[KERNEL] ?? entry, contract };
 }

@@ -77,7 +77,7 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       expect(stateHex(start.state)).toBe(v.registrationState);
 
       const finishRng = replay(v.registrationFinishDrawn);
-      const record = await registrationFinish(
+      const { record, exportKey } = await registrationFinish(
         password,
         start.state,
         unhex(v.registrationResponse),
@@ -85,6 +85,10 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       );
       finishRng.done();
       expect(hex(record)).toBe(v.registrationRecord);
+      // The application's client-only key for this credential, as the
+      // reference derives it on registration (RFC 9807 §6.4).
+      if (v.registrationExportKey !== undefined)
+        expect(hex(exportKey)).toBe(v.registrationExportKey);
     }, 60000);
 
     it(`vector ${i}: login`, async () => {
@@ -142,14 +146,41 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       replay(v.loginStartDrawn),
     ).state;
     const client = createTsClient("ts");
-    const finalization = await client.loginFinish(
+    const { finalization, exportKey } = await client.loginFinish(
       new TextDecoder().decode(unhex(v.loginPassword)),
       state,
       unhex(v.credentialResponse),
       unhex(v.context),
     );
     expect(hex(finalization)).toBe(v.finalization);
+    // The packaged client hands the application its credential's export key.
+    expect(hex(exportKey)).toBe(v.exportKey);
   });
+
+  // The packaged client's registration returns the record and the
+  // credential's export key; enrolling the same password again draws a new
+  // envelope nonce, so the export key changes with every enrollment.
+  it("returns a fresh export key with every registration through the TypeScript client", async () => {
+    const v = vectors[0];
+    const password = unhex(v.password);
+    const client = createTsClient("ts");
+    const finish = async () => {
+      const start = registrationStart(
+        password,
+        replay(v.registrationStartDrawn),
+      );
+      return client.registrationFinish(
+        new TextDecoder().decode(password),
+        start.state,
+        unhex(v.registrationResponse),
+      );
+    };
+    const first = await finish();
+    const second = await finish();
+    expect(first.record.length).toBe(128);
+    expect(first.exportKey.length).toBe(32);
+    expect(hex(first.exportKey)).not.toBe(hex(second.exportKey));
+  }, 60000);
 
   // An ordinary sign-in may leave the context out: it is the empty one, the
   // RFC 9807 default, so a caller written before the argument existed still
