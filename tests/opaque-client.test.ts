@@ -157,6 +157,31 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
     expect(hex(exportKey)).toBe(v.exportKey);
   });
 
+  // The packaged client's registration returns the record and the
+  // credential's export key; enrolling the same password again draws a new
+  // envelope nonce, so the export key changes with every enrollment.
+  it("returns a fresh export key with every registration through the TypeScript client", async () => {
+    const v = vectors[0];
+    const password = unhex(v.password);
+    const client = createTsClient("ts");
+    const finish = async () => {
+      const start = registrationStart(
+        password,
+        replay(v.registrationStartDrawn),
+      );
+      return client.registrationFinish(
+        new TextDecoder().decode(password),
+        start.state,
+        unhex(v.registrationResponse),
+      );
+    };
+    const first = await finish();
+    const second = await finish();
+    expect(first.record.length).toBe(128);
+    expect(first.exportKey.length).toBe(32);
+    expect(hex(first.exportKey)).not.toBe(hex(second.exportKey));
+  }, 60000);
+
   // An ordinary sign-in may leave the context out: it is the empty one, the
   // RFC 9807 default, so a caller written before the argument existed still
   // signs in.

@@ -102,6 +102,18 @@ describe("ZKPP kernel registry", () => {
     expect(fallbacks[0]?.reason).toBeInstanceOf(ZkppKernelContractError);
   });
 
+  // A kernel of revision 1 stays callable for the copies of revision 1 that
+  // read it; this revision does not load it.
+  it("keeps a revision-1 kernel callable for its own copies", async () => {
+    const client = { kernel: "wasm-threaded" } as ZkppClient;
+    registerZkppKernel(async () => client, 1);
+    const slot = (globalThis as Record<symbol, unknown>)[
+      REGISTRY
+    ] as ZkppKernelFactory;
+    await expect(slot("wasm-threaded")).resolves.toBe(client);
+    expect(registeredZkppKernel()?.contract).toBe(1);
+  });
+
   // A copy of this package from before the revision stored the bare factory;
   // that kernel predates the contract and does not load either.
   it("refuses a kernel registered without a contract revision", async () => {
@@ -203,6 +215,19 @@ describe("ZKPP kernel load fallback", () => {
     expect(slot[Symbol.for("@structured-id/opaque/zkpp-kernel-contract")]).toBe(
       ZKPP_KERNEL_CONTRACT,
     );
+  });
+
+  // A copy of an earlier revision registering later writes only the shared
+  // slot: its registration replaces this revision's kernel, which is not
+  // loaded any more.
+  it("a later registration by an earlier copy replaces this revision's", async () => {
+    registerZkppKernel(async () => ({ kernel: "wasm-threaded" }) as ZkppClient);
+    (globalThis as Record<symbol, unknown>)[REGISTRY] = async () =>
+      ({ kernel: "wasm-threaded" }) as ZkppClient;
+    expect(registeredZkppKernel()?.contract).toBe(0);
+    await expect(
+      loadZkppClient({ kernel: "wasm-threaded" }),
+    ).rejects.toBeInstanceOf(ZkppKernelContractError);
   });
 
   // A registration of another revision replaces this revision's: the loader

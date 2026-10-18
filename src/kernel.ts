@@ -45,37 +45,37 @@ export class ZkppKernelContractError extends Error {
   }
 }
 
-const SLOT = "@structured-id/opaque/zkpp-kernel";
-const REGISTRY = Symbol.for(SLOT);
+const REGISTRY = Symbol.for("@structured-id/opaque/zkpp-kernel");
 const CONTRACT = Symbol.for("@structured-id/opaque/zkpp-kernel-contract");
-
-/** The slot of a kernel of revision `contract` (2 and later). */
-const slotOf = (contract: number) => Symbol.for(`${SLOT}@${contract}`);
+const KERNEL = Symbol.for("@structured-id/opaque/zkpp-kernel-factory");
 
 /**
- * The shared slot holds a callable factory, the form every copy of this
- * package reads; a copy from before revisions calls it directly, and copies
- * of revision 1 read the revision riding on it under its own key.
+ * The one slot holds a callable factory, the form every copy of this package
+ * reads: a copy from before revisions calls it directly, and copies of
+ * revision 1 read the revision riding on it under its own key. From revision
+ * 2 the kernel's factory rides on it too, so any later registration, by a
+ * copy of any revision, replaces the whole entry.
  */
-type RegisteredFactory = ZkppKernelFactory & { [CONTRACT]?: number };
-type Registry = Record<symbol, RegisteredFactory | undefined>;
+type RegisteredFactory = ZkppKernelFactory & {
+  [CONTRACT]?: number;
+  [KERNEL]?: ZkppKernelFactory;
+};
+type Registry = { [REGISTRY]?: RegisteredFactory };
 
 /**
  * Register the native kernel, implementing client contract `contract`. A
- * second registration replaces the first, of any revision, so reloading a
- * module during development does not strand the old factory.
+ * second registration replaces the first, so reloading a module during
+ * development does not strand the old factory.
  */
 export function registerZkppKernel(
   factory: ZkppKernelFactory,
   contract: number,
 ): void {
-  const registry = globalThis as Registry;
-  for (const key of Object.getOwnPropertySymbols(registry))
-    if (Symbol.keyFor(key)?.startsWith(`${SLOT}@`)) delete registry[key];
   // From revision 2 the finishes return objects where a copy from before
-  // revisions expects the bytes it sends: that copy, calling the shared slot
-  // directly, gets a refusal; this revision's copies read the kernel's own slot.
-  const shared: RegisteredFactory =
+  // revisions expects the bytes it sends: that copy, calling the slot
+  // directly, gets a refusal; copies of these revisions read the factory
+  // riding on it.
+  const entry: RegisteredFactory =
     contract >= 2
       ? async () => {
           throw new Error(
@@ -83,21 +83,15 @@ export function registerZkppKernel(
           );
         }
       : (kernel) => factory(kernel);
-  shared[CONTRACT] = contract;
-  registry[REGISTRY] = shared;
-  if (contract >= 2) registry[slotOf(contract)] = (kernel) => factory(kernel);
+  entry[CONTRACT] = contract;
+  if (contract >= 2) entry[KERNEL] = (kernel) => factory(kernel);
+  (globalThis as Registry)[REGISTRY] = entry;
 }
 
-/**
- * The registered native kernel: this revision's own slot, else the shared
- * one (another revision, or 0 for one stored without a revision).
- */
+/** The registered native kernel, if any; one stored without a revision is revision 0. */
 export function registeredZkppKernel(): ZkppKernelRegistration | undefined {
-  const registry = globalThis as Registry;
-  const own = registry[slotOf(ZKPP_KERNEL_CONTRACT)];
-  if (own !== undefined)
-    return { factory: own, contract: ZKPP_KERNEL_CONTRACT };
-  const entry = registry[REGISTRY];
+  const entry = (globalThis as Registry)[REGISTRY];
   if (entry === undefined) return undefined;
-  return { factory: entry, contract: entry[CONTRACT] ?? 0 };
+  const contract = entry[CONTRACT] ?? 0;
+  return { factory: entry[KERNEL] ?? entry, contract };
 }
