@@ -19,10 +19,11 @@ export type ZkppKernelFactory = (kernel: WasmKernel) => Promise<ZkppClient>;
 
 /**
  * The revision of the {@link ZkppClient} contract this package calls. 1:
- * `loginFinish` takes the OPAQUE context (RFC 9807 §6). A kernel states the
- * revision it implements as its own constant, not by importing this one.
+ * `loginFinish` takes the OPAQUE context (RFC 9807 §6). 2: `registrationFinish`
+ * and `loginFinish` also return the credential's export key. A kernel states
+ * the revision it implements as its own constant, not by importing this one.
  */
-export const ZKPP_KERNEL_CONTRACT = 1;
+export const ZKPP_KERNEL_CONTRACT = 2;
 
 /** A registered native kernel and the contract revision it implements. */
 export interface ZkppKernelRegistration {

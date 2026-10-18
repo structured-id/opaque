@@ -61,6 +61,13 @@ export interface ClientStart {
   state: string;
 }
 
+export interface ClientRegistrationFinish {
+  /** The RegistrationRecord to send (client_pk ‖ masking_key ‖ envelope). */
+  record: Uint8Array;
+  /** The export key of the credential; never sent. */
+  exportKey: Uint8Array;
+}
+
 export interface ClientLoginFinish {
   /** KE3, the CredentialFinalization to send. */
   finalization: Uint8Array;
@@ -163,14 +170,15 @@ export function registrationState(state: string): {
 
 /**
  * Finish a registration against the server's RegistrationResponse: the
- * RegistrationRecord (client_pk ‖ masking_key ‖ envelope).
+ * RegistrationRecord (client_pk ‖ masking_key ‖ envelope) and the export key
+ * a sign-in with this credential recovers (RFC 9807 §6.4).
  */
 export async function registrationFinish(
   password: Uint8Array,
   state: string,
   response: Uint8Array,
   rng: RandomSource = secureRandom,
-): Promise<Uint8Array> {
+): Promise<ClientRegistrationFinish> {
   const { blind, request } = registrationState(state);
   const r = new Reader(response, "registration response");
   const evaluated = r.take(LEN);
@@ -186,8 +194,8 @@ export async function registrationFinish(
   const nonce = rng(LEN);
   const { pk } = envelopeKeyPair(prk, nonce);
   const clientPk = Pallas.toBytes(pk);
-  const { mac } = envelopeMac(prk, nonce, serverPk, clientPk);
-  return concat([clientPk, maskingKey, nonce, mac]);
+  const { mac, exportKey } = envelopeMac(prk, nonce, serverPk, clientPk);
+  return { record: concat([clientPk, maskingKey, nonce, mac]), exportKey };
 }
 
 /**

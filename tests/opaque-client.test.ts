@@ -77,7 +77,7 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       expect(stateHex(start.state)).toBe(v.registrationState);
 
       const finishRng = replay(v.registrationFinishDrawn);
-      const record = await registrationFinish(
+      const { record, exportKey } = await registrationFinish(
         password,
         start.state,
         unhex(v.registrationResponse),
@@ -85,6 +85,10 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       );
       finishRng.done();
       expect(hex(record)).toBe(v.registrationRecord);
+      // The application's client-only key for this credential, as the
+      // reference derives it on registration (RFC 9807 §6.4).
+      if (v.registrationExportKey !== undefined)
+        expect(hex(exportKey)).toBe(v.registrationExportKey);
     }, 60000);
 
     it(`vector ${i}: login`, async () => {
@@ -142,13 +146,15 @@ describe("OPAQUE on Pallas matches the Rust reference", () => {
       replay(v.loginStartDrawn),
     ).state;
     const client = createTsClient("ts");
-    const finalization = await client.loginFinish(
+    const { finalization, exportKey } = await client.loginFinish(
       new TextDecoder().decode(unhex(v.loginPassword)),
       state,
       unhex(v.credentialResponse),
       unhex(v.context),
     );
     expect(hex(finalization)).toBe(v.finalization);
+    // The packaged client hands the application its credential's export key.
+    expect(hex(exportKey)).toBe(v.exportKey);
   });
 
   // An ordinary sign-in may leave the context out: it is the empty one, the

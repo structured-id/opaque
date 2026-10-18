@@ -40,10 +40,14 @@ const proof = await zkpp.prove(password, start, {
 
 // 4. The final record from the server's RegistrationResponse; send it with the
 //    proof and the operation id in the finish step.
-const record = await zkpp.registrationFinish(password, start.state, registrationResponse);
+const { record, exportKey } = await zkpp.registrationFinish(password, start.state, registrationResponse);
 ```
 
-Sign-in uses `loginStart` / `loginFinish`. The client builds its proving key
+Sign-in uses `loginStart` / `loginFinish`, which returns KE3 (`finalization`)
+and the same `exportKey`. The export key (RFC 9807 §6.4) is 32 bytes only the
+client holds, for the application's own client-side protection of data tied to
+this credential; it is never sent, and enrolling the password again (a change,
+a reset) gives a new one. The client builds its proving key
 from the circuit itself; nothing comes from the server. `prepare(policyVersion,
 historyDomains)` builds it ahead of time (for example when the page opens), so
 the first proof does not wait for it. The costly parts of the key are kept in
