@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/structured-id/opaque/compare/opaque-v2.2.0...opaque-v2.2.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* avoid redeclared &lt;code&gt;let&lt;/code&gt; when &lt;code&gt;no-var&lt;… ([64f1166](https://github.com/structured-id/opaque/commit/64f11664a2190400026cece67830aeb8e10ea421))
+
 ## [2.2.0](https://github.com/structured-id/opaque/compare/opaque-v2.1.1...opaque-v2.2.0) (2026-10-18)
 
 
