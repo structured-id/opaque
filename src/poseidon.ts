@@ -158,11 +158,37 @@ export function bytesToFieldElements(bytes: Uint8Array): bigint[] {
   return out;
 }
 
-/** PoseidonHash(password_bytes ‖ salt_bytes) — history commitment. */
-export function computeHistoryCommitment(
-  password: Uint8Array,
-  salt: Uint8Array,
-): bigint {
-  const fes = bytesToFieldElements(password).concat(bytesToFieldElements(salt));
-  return hashChain(fes);
+/** Longest password the circuit holds; it is zero-padded to this length. */
+const CIRCUIT_PASSWORD_LEN = 128;
+
+/** The domain tag of the password hash: ASCII `SID-PALLAS-PASSWORD-v2`. */
+export function passwordHashTag(): bigint {
+  return bytesToFieldElements(
+    new TextEncoder().encode("SID-PALLAS-PASSWORD-v2"),
+  )[0];
+}
+
+/**
+ * The password as the hash absorbs it: zero-padded to 128 bytes when it fits,
+ * so the circuit's fixed buffer packs alike, and as given otherwise.
+ */
+export function passwordElements(password: Uint8Array): bigint[] {
+  if (password.length > CIRCUIT_PASSWORD_LEN)
+    return bytesToFieldElements(password);
+  const padded = new Uint8Array(CIRCUIT_PASSWORD_LEN);
+  padded.set(password);
+  return bytesToFieldElements(padded);
+}
+
+/**
+ * The password hash: Poseidon(tag, byte length), then each element of
+ * `passwordElements` absorbed in turn. The element count follows from the
+ * length, so trailing zero bytes or a shortened chain give another hash
+ * (RFC 9497 §4.6). Mirrors Rust `poseidon::password_hash`.
+ */
+export function passwordHash(password: Uint8Array): bigint {
+  let acc = poseidonHash2(passwordHashTag(), BigInt(password.length));
+  for (const element of passwordElements(password))
+    acc = poseidonHash2(acc, element);
+  return acc;
 }

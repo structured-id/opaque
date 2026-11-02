@@ -1,7 +1,8 @@
 /**
- * Native HashToCurve for gadget C (OPAQUE binder): H_p = HashToCurve(password).
+ * Native HashToCurve for gadget C (OPAQUE binder): H_p = HashToCurve(password),
+ * of the password as given, unpadded.
  * Byte-identical to Rust `gadget_c::hash_to_curve_outside`:
- *   u = Poseidon(bytes_to_field_elements(password))   (hash chain)
+ *   u = passwordHash(password)   (length step, then the padded elements)
  *   smallest offset i ∈ [0,256): x = u + i with x³+5 a QR; y = the even root
  *   H_p = (x, y)
  *
@@ -10,7 +11,7 @@
  */
 import { Field as NobleField } from "@noble/curves/abstract/modular.js";
 import { Fp, FP_MODULUS } from "./field.js";
-import { bytesToFieldElements, hashChain } from "./poseidon.js";
+import { passwordHash } from "./poseidon.js";
 import type { Point } from "./curve.js";
 
 const NFp = NobleField(FP_MODULUS);
@@ -34,7 +35,7 @@ export interface HashToCurveResult {
  * (RFC 9380 §10.1).
  */
 export function hashToCurveOutside(password: Uint8Array): HashToCurveResult {
-  const u = hashChain(bytesToFieldElements(password));
+  const u = passwordHash(password);
   let found: HashToCurveResult | null = null;
   for (let i = 0n; i < 256n; i++) {
     const x = Fp.add(u, i);

@@ -2,7 +2,7 @@
  * Client side of the private password history, byte-identical to the Rust
  * reference `sid_pake_core::history`:
  *
- *   u = Poseidon(d, Poseidon(P))            d: the operation's owner domain
+ *   u = Poseidon(d, passwordHash(P))        d: the operation's owner domain
  *   H = canonical_point(u)                  first offset, even y
  *   B = r·H,  Z = k·B,  N = r⁻¹·Z = k·H
  *   t = Poseidon(c, u, x(N))                c: a comparison domain
@@ -15,7 +15,12 @@ import { Field as NobleField } from "@noble/curves/abstract/modular.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { Pallas, type Point } from "./curve.js";
 import { Fp, FP_MODULUS, Fq } from "./field.js";
-import { bytesToFieldElements, hashChain, poseidonHash2 } from "./poseidon.js";
+import {
+  bytesToFieldElements,
+  hashChain,
+  passwordHash,
+  poseidonHash2,
+} from "./poseidon.js";
 import type { RandomSource } from "./random.js";
 import { MAX_PASSWORD_LEN } from "./opaque/oprf.js";
 
@@ -50,18 +55,15 @@ export function domainElement(
   return hashChain(bytesToFieldElements(concat(fields)));
 }
 
-/** The password as the circuit packs it: zero-padded, 31 bytes per element. */
-export function passwordElements(password: Uint8Array): bigint[] {
+/**
+ * `u = Poseidon(d, p)` for the owner domain `d`, `p` the password hash the
+ * binder computes. A password longer than the circuit holds has no proof and
+ * so no history input.
+ */
+export function historyInput(d: bigint, password: Uint8Array): bigint {
   if (password.length > MAX_PASSWORD_LEN)
     throw new Error("password longer than the circuit holds");
-  const padded = new Uint8Array(MAX_PASSWORD_LEN);
-  padded.set(password);
-  return bytesToFieldElements(padded);
-}
-
-/** `u = Poseidon(d, Poseidon(P))` for the owner domain `d`. */
-export function historyInput(d: bigint, password: Uint8Array): bigint {
-  return poseidonHash2(d, hashChain(passwordElements(password)));
+  return poseidonHash2(d, passwordHash(password));
 }
 
 /**

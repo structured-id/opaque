@@ -33,6 +33,7 @@ import { EccChip, EccConfig } from "../gadgets/ecc/chip.js";
 import { Pow5Config } from "../gadgets/poseidon-pow5.js";
 import { hashToCurveOutside } from "../hash-to-curve.js";
 import { canonicalPoint } from "../history.js";
+import { passwordHashTag } from "../poseidon.js";
 
 const NFp = NobleField(FP_MODULUS);
 
@@ -355,13 +356,17 @@ function classify(b: number): [boolean, boolean, boolean, boolean] {
   ];
 }
 
+/**
+ * Gadget A. Returns the password byte cells and the length count, the number
+ * of active bytes.
+ */
 function synthesizePolicy(
   config: PolicyConfig,
   policy: PolicyParams,
   layouter: Layouter,
   password: Value[],
   active: Value[],
-): AssignedCell[] {
+): { byteCells: AssignedCell[]; length: AssignedCell } {
   const tableValues = [
     range(65, 90),
     range(97, 122),
@@ -419,13 +424,14 @@ function synthesizePolicy(
       policy.minDigit,
       policy.minSymbol,
     ];
+    const length = lastCells[0];
     lastCells.forEach((count, k) => {
       const row = MAX_PASSWORD_LEN + k;
       region.enableSelector(config.qCmp, row);
       count.copyAdvice(region, config.cmpCount, row);
       region.assignFixed(config.policyMin, row, BigInt(minimums[k]));
     });
-    return byteCells;
+    return { byteCells, length };
   });
 }
 
@@ -491,10 +497,15 @@ function packChunk(chunk: Value[]): Value {
   return acc;
 }
 
+/**
+ * Gadget C. `length` is the password's length count, the first thing the
+ * password hash absorbs after its domain tag (`passwordHash`).
+ */
 function synthesizeBinder(
   config: BinderConfig,
   layouter: Layouter,
   password: Value[],
+  length: AssignedCell,
   blind: Value,
   hP: Point | undefined,
   htcOffset: Value,
@@ -511,9 +522,13 @@ function synthesizeBinder(
       region.assignAdvice(config.inputCol, 0, () => fe),
     ),
   );
-  let uHash = config.poseidon.hash2(layouter, [feCells[0], feCells[1]]);
-  for (let i = 2; i < feCells.length; i++)
-    uHash = config.poseidon.hash2(layouter, [uHash, feCells[i]]);
+  // The domain tag is a constant of the circuit, not a witness.
+  const tag = layouter.assignRegion((region) =>
+    region.assignAdviceFromConstant(config.inputCol, 0, passwordHashTag()),
+  );
+  let uHash = config.poseidon.hash2(layouter, [tag, length]);
+  for (const fe of feCells)
+    uHash = config.poseidon.hash2(layouter, [uHash, fe]);
 
   const ecc = new EccChip(config.ecc);
   const hPoint = ecc.witnessNonIdentity(layouter, hP);
@@ -1034,19 +1049,23 @@ export function synthesize(
   const pwVals: Value[] = Array.from(password, (b) => BigInt(b));
   const passwordLen = witness?.passwordLen ?? 0;
   const active: Value[] = pwVals.map((_, i) => (i < passwordLen ? 1n : 0n));
-  const htc = hashToCurveOutside(password);
+  // Key generation's empty buffer has length 0.
+  const htc = hashToCurveOutside(password.subarray(0, passwordLen));
 
-  const pwByteCells = synthesizePolicy(
+  const policyOut = synthesizePolicy(
     config.policy,
     shape.policy,
     layouter,
     pwVals,
     active,
   );
+  const pwByteCells = policyOut.byteCells;
+  // The hash absorbs gadget A's own length count, private like the password.
   const binderOut = synthesizeBinder(
     config.binder,
     layouter,
     pwVals,
+    policyOut.length,
     witness ? witness.blind : 1n,
     htc.point,
     htc.offset,

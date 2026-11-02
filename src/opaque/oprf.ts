@@ -1,11 +1,11 @@
 /**
  * The OPRF of OPAQUE on Pallas (voprf `PallasVoprf`, suite
- * "Pallas-Poseidon-SHA256"), client side, byte-identical to the Rust reference
- * `sid_pake_core::pallas_opaque` over voprf 0.5 (RFC 9497, base mode).
+ * "Pallas-Poseidon-SHA256-v2"), client side, byte-identical to the Rust
+ * reference `sid_pake_core::pallas_opaque` (RFC 9497, base mode).
  *
- * Hash-to-group is the circuit's Poseidon hash-to-curve of the password
- * zero-padded to MAX_PASSWORD_LEN, so the registration element is the value
- * the ZKPP proof computes (the DST is not used there). Hash-to-scalar is RFC
+ * Hash-to-group is the circuit's Poseidon hash-to-curve of the password (its
+ * length, then its bytes zero-padded to MAX_PASSWORD_LEN), so the registration
+ * element is the value the ZKPP proof computes (the DST is not used there). Hash-to-scalar is RFC
  * 9380 expand_message_xmd with SHA-256 to 64 bytes, reduced into the scalar
  * field.
  */
@@ -24,7 +24,7 @@ export const MAX_PASSWORD_LEN = 128;
 export const MAX_OPRF_INPUT = 0xfffe;
 
 /** voprf `CipherSuite::ID`. */
-const SUITE_ID = utf8("Pallas-Poseidon-SHA256");
+const SUITE_ID = utf8("Pallas-Poseidon-SHA256-v2");
 
 /** contextString = "OPRFV1-" ‖ mode ‖ "-" ‖ suite (RFC 9497 §3.1), base mode. */
 function dst(prefix: string): Uint8Array {
@@ -63,20 +63,16 @@ export const randomScalar = (rng: RandomSource): bigint =>
   Fq.fromUniformBytes(rng(64));
 
 /**
- * Hash-to-group of the password as the circuit hashes it. Zero padding makes
- * `P` and `P` followed by NUL bytes one element, unlike RFC 9497's
- * length-prefixed hashing: the proof covers this element, while Finalize
- * (which sees the input as given) stays client-side and unproven by design.
+ * Hash-to-group of the password as the circuit hashes it. The hash absorbs the
+ * password's length, so `P` and `P` followed by NUL bytes are different
+ * elements (RFC 9497 §4.6).
  */
 export function hashToGroup(input: Uint8Array): NonNullable<Point> {
   if (input.length === 0) throw new Error("oprf: empty input");
   // RFC 9497 §5.1: inputs MUST be smaller than 2^16 - 1 bytes. Refused here,
   // before any message, rather than at Finalize after the server answered.
   if (input.length > MAX_OPRF_INPUT) throw new Error("oprf: password too long");
-  const padded =
-    input.length < MAX_PASSWORD_LEN ? new Uint8Array(MAX_PASSWORD_LEN) : input;
-  if (padded !== input) padded.set(input);
-  return hashToCurveOutside(padded).point;
+  return hashToCurveOutside(input).point;
 }
 
 /** Hash-to-scalar over the concatenated `input` under `dstBytes`. */

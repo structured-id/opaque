@@ -5,9 +5,12 @@ import { Fp } from "../src/field.js";
 import {
   poseidonHash2,
   poseidonHash1,
-  computeHistoryCommitment,
+  passwordHash,
   bytesToFieldElements,
 } from "../src/poseidon.js";
+import { hashToGroup } from "../src/opaque/oprf.js";
+import { historyInput } from "../src/history.js";
+import { Pallas } from "../src/curve.js";
 
 const hex = (b: Uint8Array) =>
   [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -27,11 +30,46 @@ describe("Poseidon P128Pow5T3 — Rust interop", () => {
     );
   });
 
-  it('computeHistoryCommitment("Str0ngP@ssword!", [42;32]) matches Rust', () => {
-    const salt = new Uint8Array(32).fill(42);
-    expect(
-      fe(computeHistoryCommitment(te.encode("Str0ngP@ssword!"), salt)),
-    ).toBe("7abaeb1895a7d75cbdfe533b838bdcf5280311b2a88a8dade37c8ba780256a29");
+  it('passwordHash("Str0ngP@ssword!") matches Rust', () => {
+    expect(fe(passwordHash(te.encode("Str0ngP@ssword!")))).toBe(
+      "41c16d0decf874c6948613891d6c3507646197b4058deede6038eeae2cb6a423",
+    );
+  });
+});
+
+/** One 31-byte little-endian chunk of `value`, the unit a password packs in. */
+const chunk = (value: bigint) => Fp.toBytes(value).subarray(0, 31);
+
+const point = (password: Uint8Array) =>
+  hex(Pallas.toBytes(hashToGroup(password)));
+
+// One OPRF evaluation must not answer for two passwords (RFC 9497 §4.6).
+describe("the password hash keeps distinct passwords apart", () => {
+  it("a trailing NUL is another password", () => {
+    expect(point(te.encode("a"))).not.toBe(point(te.encode("a\0")));
+    expect(historyInput(1n, te.encode("a"))).not.toBe(
+      historyInput(1n, te.encode("a\0")),
+    );
+  });
+
+  it("the chain over a long input does not compress", () => {
+    const values = [173n, 1n, 2n, 3n, 4n, 5n];
+    const head = poseidonHash2(values[0], values[1]);
+    const join = (vs: bigint[]) => {
+      const out = new Uint8Array(vs.length * 31);
+      vs.forEach((v, i) => out.set(chunk(v), i * 31));
+      return out;
+    };
+    const long = join(values);
+    const short = join([head, ...values.slice(2)]);
+    expect([long.length, short.length]).toEqual([186, 155]);
+    expect(point(long)).not.toBe(point(short));
+  });
+
+  it("boundary lengths hash apart", () => {
+    const lengths = [1, 30, 31, 32, 62, 127, 128, 129, 155, 186];
+    const points = lengths.map((n) => point(new Uint8Array(n).fill(120)));
+    expect(new Set(points).size).toBe(lengths.length);
   });
 
   it("bytesToFieldElements packs 31-byte LE chunks", () => {

@@ -76,10 +76,8 @@ export function zkppInstances(
 ): bigint[] {
   if (password.length > MAX_PASSWORD_LEN)
     throw new Error("password longer than the circuit holds");
-  const padded = new Uint8Array(MAX_PASSWORD_LEN);
-  padded.set(password);
   const m = affine(
-    Pallas.scalarMul(blind, hashToCurveOutside(padded).point),
+    Pallas.scalarMul(blind, hashToCurveOutside(password).point),
     "M",
   );
   const u = historyInput(d, password);
