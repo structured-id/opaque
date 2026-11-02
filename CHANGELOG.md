@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.1](https://github.com/structured-id/opaque/compare/opaque-v2.2.0...opaque-v2.2.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* avoid redeclared &lt;code&gt;let&lt;/code&gt; when &lt;code&gt;no-var&lt;… ([64f1166](https://github.com/structured-id/opaque/commit/64f11664a2190400026cece67830aeb8e10ea421))
+* **hash:** bind the password length into the password hash ([#33](https://github.com/structured-id/opaque/issues/33)) ([9ed9275](https://github.com/structured-id/opaque/commit/9ed92750735ec7320483fd76984bfd59deaa868b)), closes [#32](https://github.com/structured-id/opaque/issues/32)
+
 ## [2.2.0](https://github.com/structured-id/opaque/compare/opaque-v2.1.1...opaque-v2.2.0) (2026-10-18)
 
 
