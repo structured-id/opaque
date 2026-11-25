@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2](https://github.com/structured-id/opaque/compare/opaque-v2.2.1...opaque-v2.2.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* throw timeout error classes instead of Error (&lt;a ([4ba50a0](https://github.com/structured-id/opaque/commit/4ba50a0dbf55a3766a05712fa5968a706288730d))
+
 ## [2.2.1](https://github.com/structured-id/opaque/compare/opaque-v2.2.0...opaque-v2.2.1) (2026-11-02)
 
 
